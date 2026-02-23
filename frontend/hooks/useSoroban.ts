@@ -17,6 +17,12 @@ export function useSoroban() {
     [networkConfig],
   );
 
+  const fetchTokenBalance = useCallback(
+    (contractId: string, accountId: string) =>
+      stellar.fetchTokenBalance(contractId, accountId, networkConfig),
+    [networkConfig],
+  );
+
   const fetchTopHolders = useCallback(
     (contractId: string, symbol?: string, issuer?: string, limit?: number) =>
       stellar.fetchTopHolders(contractId, networkConfig, symbol, issuer, limit),
@@ -53,6 +59,7 @@ export function useSoroban() {
   return useMemo(
     () => ({
       fetchTokenInfo,
+      fetchTokenBalance,
       fetchTopHolders,
       fetchCurrentLedger,
       fetchVestingSchedule,
@@ -65,6 +72,7 @@ export function useSoroban() {
     }),
     [
       fetchTokenInfo,
+      fetchTokenBalance,
       fetchTopHolders,
       fetchCurrentLedger,
       fetchVestingSchedule,

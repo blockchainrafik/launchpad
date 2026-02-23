@@ -282,6 +282,32 @@ export async function fetchTokenInfo(
 }
 
 /**
+ * Fetch a specific account's balance from a Soroban SEP-41 token contract.
+ */
+export async function fetchTokenBalance(
+  contractId: string,
+  accountId: string,
+  config: NetworkConfig,
+): Promise<string> {
+  try {
+    const args = [StellarSdk.nativeToScVal(accountId, { type: "address" })];
+    const res = await simulateCall(contractId, "balance", config, args);
+
+    if (!res) return "0.00";
+
+    const rawBalance = decodeI128(res);
+
+    const decimalsRes = await simulateCall(contractId, "decimals", config);
+    const decimals = decimalsRes ? decodeU32(decimalsRes) : 7;
+
+    return formatTokenAmount(rawBalance, decimals);
+  } catch (err) {
+    console.error(`Failed to fetch and decode balance for ${accountId}:`, err);
+    return "0.00";
+  }
+}
+
+/**
  * Fetch the top token holders.
  */
 export async function fetchTopHolders(
