@@ -56,6 +56,16 @@ export function useSoroban() {
     [networkConfig],
   );
 
+  const buildBurnTransaction = useCallback(
+    (tokenContractId: string, fromAddress: string, amount: string, decimals: number) =>
+      stellar.buildBurnTransaction(tokenContractId, fromAddress, amount, decimals, networkConfig),
+    [networkConfig],
+  );
+
+  const submitTransaction = useCallback(
+    (signedXdr: string) => stellar.submitTransaction(signedXdr),
+    [],
+  );
   return useMemo(
     () => ({
       fetchTokenInfo,
@@ -65,6 +75,8 @@ export function useSoroban() {
       fetchVestingSchedule,
       fetchSupplyBreakdown,
       fetchAccountBalances,
+      buildBurnTransaction,
+      submitTransaction,
       networkConfig,
       // Pass through formatting helpers which don't need config
       formatTokenAmount: stellar.formatTokenAmount,
@@ -78,6 +90,8 @@ export function useSoroban() {
       fetchVestingSchedule,
       fetchSupplyBreakdown,
       fetchAccountBalances,
+      buildBurnTransaction,
+      submitTransaction,
       networkConfig,
     ],
   );
