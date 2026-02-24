@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Copy, Check, ArrowUpDown, AlertCircle, Loader2, Download } from "lucide-react";
+import {
+  Copy,
+  Check,
+  ArrowUpDown,
+  AlertCircle,
+  Loader2,
+  Download,
+} from "lucide-react";
 import {
   truncateAddress,
   type TokenInfo,
@@ -23,8 +30,15 @@ type SortDir = "asc" | "desc";
 // Sub-components
 // ---------------------------------------------------------------------------
 
-
-function InfoCard({ label, value, copyValue }: { label: string; value: string; copyValue?: string }) {
+function InfoCard({
+  label,
+  value,
+  copyValue,
+}: {
+  label: string;
+  value: string;
+  copyValue?: string;
+}) {
   return (
     <div className="glass-card flex flex-col gap-1 p-4">
       <div className="flex items-center justify-between">
@@ -32,12 +46,14 @@ function InfoCard({ label, value, copyValue }: { label: string; value: string; c
           {label}
         </span>
         {copyValue && copyValue !== "N/A" && (
-          <CopyButton value={copyValue} label={`Copy ${label}`} className="ml-1" />
+          <CopyButton
+            value={copyValue}
+            label={`Copy ${label}`}
+            className="ml-1"
+          />
         )}
       </div>
-      <span className="truncate text-lg font-semibold text-white">
-        {value}
-      </span>
+      <span className="truncate text-lg font-semibold text-white">{value}</span>
     </div>
   );
 }
@@ -205,8 +221,13 @@ function HoldersTable({ holders }: { holders: TokenHolder[] }) {
                 <td className="px-4 py-3 font-mono text-xs text-stellar-300">
                   <div className="flex items-center gap-2">
                     <span className="hidden sm:inline">{holder.address}</span>
-                    <span className="sm:hidden">{truncateAddress(holder.address, 6)}</span>
-                    <CopyButton value={holder.address} label="Copy wallet address" />
+                    <span className="sm:hidden">
+                      {truncateAddress(holder.address, 6)}
+                    </span>
+                    <CopyButton
+                      value={holder.address}
+                      label="Copy wallet address"
+                    />
                   </div>
                 </td>
                 <td className="px-4 py-3 text-right font-mono text-white">
@@ -237,6 +258,7 @@ function HoldersTable({ holders }: { holders: TokenHolder[] }) {
 }
 
 import ActivityFeed from "./ActivityFeed";
+import { TransferPanel } from "./components/TransferPanel";
 
 // ---------------------------------------------------------------------------
 // Main dashboard component
@@ -372,6 +394,13 @@ export default function TokenDashboard({ contractId }: { contractId: string }) {
         </h2>
         <ActivityFeed accountId={contractId} />
       </section>
+
+      {/* Transfer Tokens Panel */}
+      <TransferPanel
+        contractId={contractId}
+        tokenSymbol={tokenInfo.symbol}
+        tokenDecimals={tokenInfo.decimals}
+      />
     </div>
   );
 }
