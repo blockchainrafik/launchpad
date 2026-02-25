@@ -11,12 +11,11 @@ import {
   ExternalLink,
 } from "lucide-react";
 import {
-  fetchTokenInfo,
-  fetchTopHolders,
   truncateAddress,
   type TokenInfo,
   type TokenHolder,
 } from "@/lib/stellar";
+import { useSoroban } from "@/hooks/useSoroban";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -310,6 +309,7 @@ export default function PublicTokenPage({
 }: {
   contractId: string;
 }) {
+  const { fetchTokenInfo, fetchTopHolders } = useSoroban();
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
   const [holders, setHolders] = useState<TokenHolder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -335,7 +335,7 @@ export default function PublicTokenPage({
     } finally {
       setLoading(false);
     }
-  }, [contractId]);
+  }, [contractId, fetchTokenInfo, fetchTopHolders]);
 
   useEffect(() => {
     loadData();
