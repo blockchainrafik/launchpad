@@ -18,6 +18,10 @@ npm install
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 cargo install --locked soroban-cli
 
+# Run a standalone local Soroban network
+# Allows rapid offline testing without waiting on testnet
+docker-compose up -d
+
 # Build contracts
 cd contracts && cargo build
 
