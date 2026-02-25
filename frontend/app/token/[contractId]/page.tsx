@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { fetchTokenInfo } from "@/lib/stellar";
+import { NETWORKS } from "@/types/network";
 import PublicTokenPage from "./PublicTokenPage";
 
 interface PageProps {
@@ -12,7 +13,7 @@ export async function generateMetadata({
   const { contractId } = await params;
 
   try {
-    const tokenInfo = await fetchTokenInfo(contractId);
+    const tokenInfo = await fetchTokenInfo(contractId, NETWORKS.testnet);
 
     return {
       title: `${tokenInfo.name} (${tokenInfo.symbol}) — ${tokenInfo.totalSupply} Supply | SoroPad`,
