@@ -300,18 +300,13 @@ function HoldersTable({ holders }: { holders: TokenHolder[] }) {
                       }`}
                     >
                       <td className="px-4 py-3 font-mono text-xs text-stellar-300">
-                        <div className="flex items-center gap-2">
-                          <span className="hidden sm:inline">
-                            {holder.address}
-                          </span>
-                          <span className="sm:hidden">
-                            {truncateAddress(holder.address, 6)}
-                          </span>
-                          <CopyButton
-                            value={holder.address}
-                            label="Copy wallet address"
-                          />
-                        </div>
+                        <ExplorerLink
+                          type="account"
+                          identifier={holder.address}
+                          truncate={true}
+                          truncateChars={6}
+                          showCopy={true}
+                        />
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-white">
                         {holder.balance}
@@ -414,6 +409,7 @@ function HoldersTable({ holders }: { holders: TokenHolder[] }) {
 }
 
 import ActivityFeed from "./ActivityFeed";
+import { TransferPanel } from "./components/TransferPanel";
 
 // ---------------------------------------------------------------------------
 // Main dashboard component
@@ -553,6 +549,13 @@ export default function TokenDashboard({ contractId }: { contractId: string }) {
         </h2>
         <ActivityFeed accountId={contractId} />
       </section>
+
+      {/* Transfer Tokens Panel */}
+      <TransferPanel
+        contractId={contractId}
+        tokenSymbol={tokenInfo.symbol}
+        tokenDecimals={tokenInfo.decimals}
+      />
     </div>
   );
 }
