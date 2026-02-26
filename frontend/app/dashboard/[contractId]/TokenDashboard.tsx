@@ -179,6 +179,7 @@ function HoldersTable({ holders }: { holders: TokenHolder[] }) {
   const paginatedHolders = sorted.slice(startIndex, endIndex);
 
   // Reset to page 1 when search changes
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
@@ -235,7 +236,7 @@ function HoldersTable({ holders }: { holders: TokenHolder[] }) {
       <div className="glass-card overflow-hidden">
         {filtered.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            <p>No holders found matching "{searchQuery}"</p>
+            <p>No holders found matching &quot;{searchQuery}&quot;</p>
           </div>
         ) : (
           <>
