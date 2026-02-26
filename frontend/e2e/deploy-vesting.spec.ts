@@ -19,7 +19,7 @@ const STUB_CONTRACT_ID =
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Fill a labelled input field. Clears any existing value first. */
+/** Fill a text input found by its label. Clears existing value first. */
 async function fillField(
   page: import("@playwright/test").Page,
   label: string,
@@ -28,6 +28,21 @@ async function fillField(
   const input = page.getByLabel(label);
   await input.click();
   await input.fill(value);
+}
+
+/**
+ * Fill a number input found by its `name` attribute.
+ * Uses triple-click + keyboard.type() so React's onChange fires reliably for
+ * react-hook-form fields registered with `valueAsNumber: true`.
+ */
+async function fillNumberInput(
+  page: import("@playwright/test").Page,
+  name: string,
+  value: string,
+) {
+  const input = page.locator(`input[name="${name}"]`);
+  await input.click({ clickCount: 3 }); // select all existing content
+  await page.keyboard.type(value);      // fire per-character input events
 }
 
 // ---------------------------------------------------------------------------
@@ -69,8 +84,9 @@ test.describe("Deploy + Vesting E2E flow", () => {
     // ── Step 2: Supply ──
     await expect(page.getByText("Supply Configuration")).toBeVisible();
 
-    await fillField(page, "Initial Supply", "1000000");
-    await expect(page.getByLabel("Initial Supply")).toHaveValue("1000000");
+    // Use keyboard.type() for number inputs so react-hook-form's onChange fires.
+    await fillNumberInput(page, "initialSupply", "1000000");
+    await expect(page.locator('input[name="initialSupply"]')).toHaveValue("1000000");
     // Leave max supply blank (uncapped)
 
     await page.getByRole("button", { name: "Continue" }).click();
