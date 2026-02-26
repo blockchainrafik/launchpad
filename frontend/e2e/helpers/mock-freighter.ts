@@ -8,7 +8,7 @@ import { Page } from "@playwright/test";
  * defaults to a well-known testnet address.
  */
 export const TEST_PUBLIC_KEY =
-  process.env.TEST_PUBLIC_KEY ??
+  process.env.TEST_PUBLIC_KEY ||
   "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
 
 export async function mockFreighter(page: Page, publicKey = TEST_PUBLIC_KEY) {
@@ -34,10 +34,11 @@ export async function mockFreighter(page: Page, publicKey = TEST_PUBLIC_KEY) {
       };
 
       // Freighter detection: the real extension sets this.
-      (window as any).__FREIGHTER_API = api;
+      const w = window as Window & Record<string, unknown>;
+      w.__FREIGHTER_API = api;
 
       // Some bundled builds read directly from window.freighter
-      (window as any).freighter = api;
+      w.freighter = api;
     },
     publicKey,
   );

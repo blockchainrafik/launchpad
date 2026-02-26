@@ -12,7 +12,7 @@ const ADMIN_KEY = TEST_PUBLIC_KEY;
 // deploy step; for now we use a deterministic stub so the dashboard route
 // can be tested independently.
 const STUB_CONTRACT_ID =
-  process.env.TEST_CONTRACT_ID ??
+  process.env.TEST_CONTRACT_ID ||
   "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
 // ---------------------------------------------------------------------------
@@ -44,9 +44,9 @@ test.describe("Deploy + Vesting E2E flow", () => {
   test("(1) mocks Freighter and shows connected wallet", async ({ page }) => {
     await page.goto("/");
 
-    // The WalletButton should show the truncated public key once the
-    // auto-reconnect in WalletProvider resolves.
-    const walletBadge = page.locator(`text=${ADMIN_KEY.slice(0, 4)}`);
+    // The WalletButton shows the full key as the button's title attribute
+    // once the auto-reconnect in WalletProvider resolves.
+    const walletBadge = page.locator(`button[title="${ADMIN_KEY}"]`);
     await expect(walletBadge).toBeVisible({ timeout: 10_000 });
   });
 
@@ -73,9 +73,9 @@ test.describe("Deploy + Vesting E2E flow", () => {
     await page.getByRole("button", { name: "Continue" }).click();
 
     // ── Step 3: Admin ──
-    await expect(page.getByText("Admin Address")).toBeVisible();
+    await expect(page.getByText("Administration")).toBeVisible();
 
-    await fillField(page, "Admin Public Key", ADMIN_KEY);
+    await fillField(page, "Admin Address", ADMIN_KEY);
 
     await page.getByRole("button", { name: "Continue" }).click();
 
