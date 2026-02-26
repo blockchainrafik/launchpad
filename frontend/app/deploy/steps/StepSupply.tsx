@@ -13,7 +13,7 @@ export const StepSupply = ({ register, errors }: StepProps) => {
             <div className="text-left">
                 <h2 className="text-xl font-bold text-white mb-2">Supply Configuration</h2>
                 <p className="text-sm text-gray-400">
-                    Configure the total and initial supply of your token.
+                    Set the initial and maximum supply for your token.
                 </p>
             </div>
 
@@ -28,8 +28,9 @@ export const StepSupply = ({ register, errors }: StepProps) => {
             <Input
                 label="Maximum Supply (Optional)"
                 type="number"
-                placeholder="Leave blank for uncapped"
-                {...register("maxSupply", {
+                placeholder="Leave empty for unlimited"
+                {...register("maxSupply", { 
+                    valueAsNumber: true,
                     setValueAs: (v) => v === "" ? undefined : Number(v)
                 })}
                 error={errors.maxSupply?.message as string}

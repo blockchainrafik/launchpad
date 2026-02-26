@@ -18,6 +18,10 @@ npm install
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 cargo install --locked soroban-cli
 
+# Run a standalone local Soroban network
+# Allows rapid offline testing without waiting on testnet
+docker-compose up -d
+
 # Build contracts
 cd contracts && cargo build
 
@@ -63,3 +67,27 @@ npm run test:e2e
 ## Questions?
 
 Open a [GitHub Discussion](https://github.com/your-org/soroban-token-launchpad/discussions) or comment on the relevant issue.
+
+---
+
+## Regenerating Contract Bindings
+
+TypeScript bindings for the contracts are automatically generated after a successful deployment using `scripts/deploy.ts`. They are stored in `frontend/lib/contracts/`.
+
+If you need to manually regenerate bindings (e.g., after changing contract code without a full re-deploy), you can use the `soroban` CLI:
+
+```bash
+# Generate token bindings
+soroban contract bindings typescript \
+  --id <TOKEN_CONTRACT_ID> \
+  --network <NETWORK> \
+  --output-dir frontend/lib/contracts/token \
+  --overwrite
+
+# Generate vesting bindings
+soroban contract bindings typescript \
+  --id <VESTING_CONTRACT_ID> \
+  --network <NETWORK> \
+  --output-dir frontend/lib/contracts/vesting \
+  --overwrite
+```
