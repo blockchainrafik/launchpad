@@ -11,6 +11,14 @@ const DEFAULT_SOROBAN_RPC_URL =
   "https://soroban-testnet.stellar.org";
 const NETWORK_PASSPHRASE =
   process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE ?? StellarSdk.Networks.TESTNET;
+const DEFAULT_MERCURY_BASE_URL_TESTNET =
+  process.env.NEXT_PUBLIC_MERCURY_TESTNET_URL ??
+  "https://testnet.mercurydata.app/rest";
+const DEFAULT_MERCURY_BASE_URL_MAINNET =
+  process.env.NEXT_PUBLIC_MERCURY_MAINNET_URL ??
+  "https://mainnet.mercurydata.app/rest";
+const DEFAULT_MERCURY_AUTH_TOKEN =
+  process.env.NEXT_PUBLIC_MERCURY_AUTH_TOKEN ?? "";
 
 function getHorizonUrl(): string {
   if (typeof window !== "undefined") {
@@ -24,6 +32,22 @@ function getRpcUrl(): string {
     return localStorage.getItem("soropad_rpc_url") || DEFAULT_SOROBAN_RPC_URL;
   }
   return DEFAULT_SOROBAN_RPC_URL;
+}
+
+function getMercuryConfig(config: NetworkConfig): { baseUrl: string; token: string } | null {
+  const explicitBaseUrl = process.env.NEXT_PUBLIC_MERCURY_BASE_URL;
+  const baseUrl =
+    explicitBaseUrl ??
+    (config.network === "mainnet"
+      ? DEFAULT_MERCURY_BASE_URL_MAINNET
+      : DEFAULT_MERCURY_BASE_URL_TESTNET);
+  const token = DEFAULT_MERCURY_AUTH_TOKEN;
+
+  if (!token) {
+    return null;
+  }
+
+  return { baseUrl, token };
 }
 
 // ---------------------------------------------------------------------------
@@ -129,6 +153,154 @@ async function simulateCall(
   return sim.result.retval;
 }
 
+// ---------------------------------------------------------------------------
+// Mercury indexer helpers
+// ---------------------------------------------------------------------------
+
+async function fetchMercuryJson(
+  config: NetworkConfig,
+  path: string,
+  params?: Record<string, string | number | undefined>,
+): Promise<unknown> {
+  const mercury = getMercuryConfig(config);
+  if (!mercury) {
+    throw new Error(
+      "Mercury indexer not configured. Set NEXT_PUBLIC_MERCURY_AUTH_TOKEN.",
+    );
+  }
+
+  const searchParams = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === undefined) return;
+      searchParams.set(key, String(value));
+    });
+  }
+
+  const query = searchParams.toString();
+  const url = `${mercury.baseUrl}${path}${query ? `?${query}` : ""}`;
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${mercury.token}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `Mercury request failed (${response.status}): ${body || response.statusText}`,
+    );
+  }
+
+  return response.json();
+}
+
+async function fetchMercuryEventsByContract(
+  contractId: string,
+  config: NetworkConfig,
+  params: { topics?: string[]; limit?: number; offset?: number },
+): Promise<unknown[]> {
+  const json = await fetchMercuryJson(
+    config,
+    `/events/by-contract/${contractId}`,
+    {
+      topics: params.topics?.join(","),
+      limit: params.limit,
+      offset: params.offset,
+    },
+  );
+
+  const payload = json as { events?: unknown; data?: unknown };
+  if (Array.isArray(payload?.events)) return payload.events;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(json)) return json;
+  return [];
+}
+
+function encodeTopicSymbol(symbol: string): string {
+  return StellarSdk.nativeToScVal(symbol, { type: "symbol" }).toXDR("base64");
+}
+
+function toScVal(value: unknown): StellarSdk.xdr.ScVal | null {
+  if (!value) return null;
+  if (typeof value === "string") {
+    try {
+      return StellarSdk.xdr.ScVal.fromXDR(value, "base64");
+    } catch {
+      return null;
+    }
+  }
+
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as StellarSdk.xdr.ScVal).switch === "function"
+  ) {
+    return value as StellarSdk.xdr.ScVal;
+  }
+
+  return null;
+}
+
+function readEventTopics(event: unknown): unknown[] {
+  const e = event as { topic?: unknown; topics?: unknown };
+  if (Array.isArray(e.topic)) return e.topic;
+  if (Array.isArray(e.topics)) return e.topics;
+  return [];
+}
+
+function readEventLedger(event: unknown): number {
+  const e = event as {
+    ledger?: unknown;
+    ledger_seq?: unknown;
+    ledger_sequence?: unknown;
+    ledgerSequence?: unknown;
+  };
+  const val =
+    e.ledger ?? e.ledger_seq ?? e.ledger_sequence ?? e.ledgerSequence ?? 0;
+  return typeof val === "number" ? val : Number(val) || 0;
+}
+
+function readEventId(event: unknown, fallback: string): string {
+  const e = event as { id?: unknown; event_id?: unknown; eventId?: unknown };
+  const val = e.id ?? e.event_id ?? e.eventId;
+  return typeof val === "string" ? val : fallback;
+}
+
+function readEventTxHash(event: unknown): string {
+  const e = event as { tx_hash?: unknown; txHash?: unknown; hash?: unknown };
+  const val = e.tx_hash ?? e.txHash ?? e.hash;
+  return typeof val === "string" ? val : "";
+}
+
+function readEventTimestamp(event: unknown): string {
+  const e = event as {
+    timestamp?: unknown;
+    ledger_timestamp?: unknown;
+    ledgerTimestamp?: unknown;
+    created_at?: unknown;
+    createdAt?: unknown;
+  };
+  const val =
+    e.timestamp ??
+    e.ledger_timestamp ??
+    e.ledgerTimestamp ??
+    e.created_at ??
+    e.createdAt;
+
+  if (typeof val === "string") return val;
+  if (typeof val === "number") return new Date(val * 1000).toISOString();
+  return new Date(0).toISOString();
+}
+
+function readEventTimestampNumber(event: unknown): number {
+  const iso = readEventTimestamp(event);
+  const ms = Date.parse(iso);
+  return Number.isNaN(ms) ? 0 : Math.floor(ms / 1000);
+}
+
 export async function fetchTokenAllowance(
   contractId: string,
   ownerAddress: string,
@@ -146,57 +318,33 @@ export async function fetchTokenAllowance(
 export async function fetchApprovedSpendersFromEvents(params: {
   contractId: string;
   ownerAddress: string;
+  config: NetworkConfig;
   maxPages?: number;
 }): Promise<string[]> {
-  const { contractId, ownerAddress, maxPages = 5 } = params;
-
-  const rpc = new StellarSdk.rpc.Server(getRpcUrl());
+  const { contractId, ownerAddress, config, maxPages = 5 } = params;
   const spenders = new Set<string>();
 
-  const getEvents = (rpc as unknown as { getEvents?: (req: unknown) => Promise<unknown> }).getEvents;
-  if (!getEvents) {
-    return [];
-  }
-
-  const readStringArray = (v: unknown): string[] | null => {
-    if (!Array.isArray(v)) return null;
-    if (!v.every((x) => typeof x === "string")) return null;
-    return v as string[];
-  };
-
-  // @TODO: Use an indexer for fetching approved spenders instead of scanning RPC events.
-  // NOTE: This is best-effort. Not all RPC nodes retain unlimited history.
-  // We page a limited number of times to avoid expensive scans.
-  let cursor: string | undefined;
+  const topicApprove = encodeTopicSymbol("approve");
+  const pageSize = 200;
 
   for (let page = 0; page < maxPages; page++) {
-    const response = await getEvents({
-      startLedger: 0,
-      filters: [
-        {
-          type: "contract",
-          contractIds: [contractId],
-        },
-      ],
-      pagination: {
-        limit: 200,
-        cursor,
-      },
+    const events = await fetchMercuryEventsByContract(contractId, config, {
+      topics: [topicApprove],
+      limit: pageSize,
+      offset: page * pageSize,
     });
 
-    const responseObj = (response ?? {}) as { events?: unknown; cursor?: unknown };
-    const events = Array.isArray(responseObj.events) ? responseObj.events : [];
     if (events.length === 0) break;
 
-    for (const e of events) {
+    for (const event of events) {
       try {
-        const eventObj = (e ?? {}) as { topic?: unknown };
-        const topic = readStringArray(eventObj.topic) ?? [];
-        if (topic.length < 3) continue;
+        const topics = readEventTopics(event);
+        if (topics.length < 3) continue;
 
-        const topic0 = StellarSdk.xdr.ScVal.fromXDR(topic[0], "base64");
-        const topic1 = StellarSdk.xdr.ScVal.fromXDR(topic[1], "base64");
-        const topic2 = StellarSdk.xdr.ScVal.fromXDR(topic[2], "base64");
+        const topic0 = toScVal(topics[0]);
+        const topic1 = toScVal(topics[1]);
+        const topic2 = toScVal(topics[2]);
+        if (!topic0 || !topic1 || !topic2) continue;
 
         const symbol = decodeString(topic0);
         if (symbol !== "approve") continue;
@@ -211,10 +359,6 @@ export async function fetchApprovedSpendersFromEvents(params: {
         // ignore malformed events
       }
     }
-
-    const nextCursor = typeof responseObj.cursor === "string" ? responseObj.cursor : undefined;
-    if (!nextCursor || nextCursor === cursor) break;
-    cursor = nextCursor;
   }
 
   return Array.from(spenders);
@@ -427,47 +571,56 @@ export async function fetchTransactionHistory(
   contractId: string,
   config: NetworkConfig,
 ): Promise<TransactionItem[]> {
-  const currentLedger = await fetchCurrentLedger(config);
-  // Fetch events from a reasonable start point (e.g., 100,000 ledgers back or from start of Soroban)
-  // For testnet, ledgers are fast. Let's try to fetch a good chunk.
-  // @TODO: Implement proper indexing for transaction history instead of RPC getEvents.
-  // In a real app, this would be indexed.
-  const startLedger = Math.max(1, currentLedger - 10000);
-
-  const response = await getRpc().getEvents({
-    startLedger,
-    filters: [
-      {
-        type: "contract",
-        contractIds: [contractId],
-      },
-    ],
-  });
-
   const history: TransactionItem[] = [];
+  const topicTransfer = encodeTopicSymbol("transfer");
+  const topicMint = encodeTopicSymbol("mint");
+  const topicBurn = encodeTopicSymbol("burn");
 
-  for (const event of response.events) {
-    const topics = event.topic;
-    const typePath = decodeString(topics[0]);
+  const pageSize = 200;
+  const maxPages = 10;
 
-    if (typePath === "mint" || typePath === "burn" || typePath === "transfer") {
+  for (let page = 0; page < maxPages; page++) {
+    const events = await fetchMercuryEventsByContract(contractId, config, {
+      topics: [topicTransfer, topicMint, topicBurn],
+      limit: pageSize,
+      offset: page * pageSize,
+    });
+
+    if (events.length === 0) break;
+
+    for (const event of events) {
+      const topics = readEventTopics(event);
+      const topic0 = toScVal(topics[0]);
+      if (!topic0) continue;
+
+      const typePath = decodeString(topic0);
+      if (typePath !== "mint" && typePath !== "burn" && typePath !== "transfer") {
+        continue;
+      }
+
+      const data = toScVal((event as { value?: unknown; data?: unknown }).value ?? (event as { data?: unknown }).data);
+      if (!data) continue;
+
       const item: Partial<TransactionItem> = {
         type: typePath as TransactionItem["type"],
-        ledger: event.ledger,
-        timestamp: 0,
-        id: event.id,
+        ledger: readEventLedger(event),
+        timestamp: readEventTimestampNumber(event),
+        id: readEventId(event, `${readEventTxHash(event)}-${readEventLedger(event)}`),
       };
 
-      const data = event.value;
       item.amount = decodeI128(data);
 
       if (typePath === "mint" && topics.length > 1) {
-        item.to = decodeAddress(topics[1]);
+        const to = toScVal(topics[1]);
+        if (to) item.to = decodeAddress(to);
       } else if (typePath === "burn" && topics.length > 1) {
-        item.from = decodeAddress(topics[1]);
+        const from = toScVal(topics[1]);
+        if (from) item.from = decodeAddress(from);
       } else if (typePath === "transfer" && topics.length > 2) {
-        item.from = decodeAddress(topics[1]);
-        item.to = decodeAddress(topics[2]);
+        const from = toScVal(topics[1]);
+        const to = toScVal(topics[2]);
+        if (from) item.from = decodeAddress(from);
+        if (to) item.to = decodeAddress(to);
       }
 
       history.push(item as TransactionItem);
@@ -494,16 +647,76 @@ export interface TokenActivityInfo {
  */
 export async function fetchAccountOperations(
   accountId: string,
+  config: NetworkConfig,
   cursor?: string,
   limit = 10,
 ): Promise<{ records: TokenActivityInfo[]; nextCursor: string | null }> {
   try {
+    // For contract IDs, use indexer events instead of Horizon.
+    if (accountId.startsWith("C")) {
+      const topicTransfer = encodeTopicSymbol("transfer");
+      const topicMint = encodeTopicSymbol("mint");
+      const topicBurn = encodeTopicSymbol("burn");
+      const pageSize = Math.min(limit, 200);
+      const offset = cursor ? Number(cursor) || 0 : 0;
+
+      const events = await fetchMercuryEventsByContract(accountId, config, {
+        topics: [topicTransfer, topicMint, topicBurn],
+        limit: pageSize,
+        offset,
+      });
+
+      const records: TokenActivityInfo[] = [];
+
+      for (const event of events) {
+        const topics = readEventTopics(event);
+        const topic0 = toScVal(topics[0]);
+        if (!topic0) continue;
+
+        const typePath = decodeString(topic0);
+        if (typePath !== "mint" && typePath !== "burn" && typePath !== "transfer") {
+          continue;
+        }
+
+        const data = toScVal((event as { value?: unknown; data?: unknown }).value ?? (event as { data?: unknown }).data);
+        if (!data) continue;
+
+        const amount = decodeI128(data);
+        let from = "-";
+        let to = "-";
+
+        if (typePath === "mint" && topics.length > 1) {
+          const toVal = toScVal(topics[1]);
+          if (toVal) to = decodeAddress(toVal);
+        } else if (typePath === "burn" && topics.length > 1) {
+          const fromVal = toScVal(topics[1]);
+          if (fromVal) from = decodeAddress(fromVal);
+        } else if (typePath === "transfer" && topics.length > 2) {
+          const fromVal = toScVal(topics[1]);
+          const toVal = toScVal(topics[2]);
+          if (fromVal) from = decodeAddress(fromVal);
+          if (toVal) to = decodeAddress(toVal);
+        }
+
+        records.push({
+          id: readEventId(event, `${readEventTxHash(event)}-${readEventLedger(event)}`),
+          pagingToken: String(offset + records.length),
+          type: typePath as TokenActivityInfo["type"],
+          amount,
+          from,
+          to,
+          timestamp: readEventTimestamp(event),
+          txHash: readEventTxHash(event),
+        });
+      }
+
+      const nextCursor = events.length === pageSize ? String(offset + pageSize) : null;
+      return { records, nextCursor };
+    }
+
     const horizon = new StellarSdk.Horizon.Server(getHorizonUrl());
 
     // Horizon's .forAccount() only accepts Ed25519 public keys (starting with G).
-    // If the accountId is a contract ID (starting with C), we cannot query its operations this way.
-    // @TODO: Integrate a proper indexer (like Mercury) for fetching contract account operations.
-    // In a production app, we would use an Indexer like Mercury for contract history.
     if (!accountId.startsWith("G") && !accountId.startsWith("M")) {
       return { records: [], nextCursor: null };
     }
@@ -775,45 +988,39 @@ export async function fetchSupplyBreakdown(
     );
     const totalSupply = Number(decodeI128(totalSupplyVal));
 
-    // @TODO: Implement real circulating supply calculation.
-    // For now, we'll estimate circulating supply as total supply
-    // In a production app, you'd query all vesting contracts and subtract locked amounts
-    let lockedSupply = 0;
-
-    // If vesting contract provided, try to get locked amount
-    // Note: This is a simplified approach. In production, you'd need to:
-    // 1. Query all vesting schedules from the contract
-    // 2. Sum up unvested amounts across all schedules
-    if (vestingContractId) {
-      try {
-        // @TODO: Implement real locked supply calculation by reading vesting schedules.
-        // This is a placeholder - actual implementation would need to
-        // enumerate all vesting schedules and sum unvested amounts
-        // For now, we'll return 0 for locked
-        lockedSupply = 0;
-      } catch {
-        // Vesting contract query failed, assume no locked supply
-        lockedSupply = 0;
-      }
-    }
-
-    // @TODO: Implement proper total_burned tracking from the token contract.
-    // Burned supply: In Stellar/Soroban, burned tokens are typically sent to a null address
-    // or the supply is reduced. For now, we'll calculate it as the difference
-    // between max supply (if exists) and total supply
+    // Fetch total burned from token contract (tracked explicitly on-chain)
     let burnedSupply = 0;
     try {
-      await simulateCall(
+      const burnedVal = await simulateCall(
         tokenContractId,
-        "max_supply",
+        "total_burned",
         config,
       );
-      // max_supply might return Option<i128>, need to handle that
-      // For simplicity, we'll assume if it exists, burned = max - total
-      // This is a simplified approach
+      burnedSupply = Number(decodeI128(burnedVal));
     } catch {
-      // No max_supply or it failed, assume no burned tokens
+      // If the contract doesn't expose total_burned for some reason, assume 0
       burnedSupply = 0;
+    }
+
+    // Locked supply is modeled as the token balance held by the vesting
+    // contract (or contracts). When a vesting schedule is created, tokens
+    // are transferred to the vesting contract address and remain there
+    // until released.
+    let lockedSupply = 0;
+    if (vestingContractId) {
+      try {
+        const vestingAddr = new StellarSdk.Address(vestingContractId).toScVal();
+        const lockedVal = await simulateCall(
+          tokenContractId,
+          "balance",
+          config,
+          [vestingAddr],
+        );
+        lockedSupply = Number(decodeI128(lockedVal));
+      } catch {
+        // If the vesting contract or balance call fails, fall back to 0
+        lockedSupply = 0;
+      }
     }
 
     const circulatingSupply = totalSupply - lockedSupply - burnedSupply;

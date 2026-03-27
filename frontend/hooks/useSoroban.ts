@@ -69,8 +69,8 @@ export function useSoroban() {
 
   const fetchAccountOperations = useCallback(
     (accountId: string, cursor?: string, limit?: number) =>
-      stellar.fetchAccountOperations(accountId, cursor, limit),
-    [],
+      stellar.fetchAccountOperations(accountId, networkConfig, cursor, limit),
+    [networkConfig],
   );
 
   const submitTransaction = useCallback(

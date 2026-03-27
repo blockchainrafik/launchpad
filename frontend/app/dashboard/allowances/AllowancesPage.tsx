@@ -58,6 +58,7 @@ export function AllowancesPage({
         fetchApprovedSpendersFromEvents({
           contractId,
           ownerAddress: publicKey,
+          config: networkConfig,
           maxPages: 5,
         }),
       ]);

@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState, useCallback, useRef } from "react";
 import {
   // ArrowUpRight,
@@ -7,14 +9,12 @@ import {
   Flame,
   Droplets,
 } from "lucide-react";
-import {
-  fetchAccountOperations,
-  // truncateAddress,
-  type TokenActivityInfo,
-} from "@/lib/stellar";
+import { type TokenActivityInfo } from "@/lib/stellar";
 import { ExplorerLink } from "@/components/ui/ExplorerLink";
+import { useSoroban } from "@/hooks/useSoroban";
 
 export default function ActivityFeed({ accountId }: { accountId: string }) {
+  const { fetchAccountOperations } = useSoroban();
   const [operations, setOperations] = useState<TokenActivityInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -65,7 +65,7 @@ export default function ActivityFeed({ accountId }: { accountId: string }) {
         if (isLoadMore) setLoadingMore(false);
       }
     },
-    [accountId],
+    [accountId, fetchAccountOperations],
   );
 
   // Initial load
