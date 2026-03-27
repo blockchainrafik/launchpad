@@ -16,7 +16,7 @@ Usage:
     --max-supply 10000000
 
 Flags:
-  --network      Soroban network (testnet | mainnet | futurenet)  [required]
+  --network      Soroban network (local | testnet | mainnet | futurenet)  [required]
   --admin        Stellar secret key or identity name               [required]
   --name         Token name                                        [required]
   --symbol       Token symbol                                      [required]
@@ -61,8 +61,10 @@ function validate(args: Record<string, string>): void {
     }
   }
 
-  if (!["testnet", "mainnet", "futurenet"].includes(args.network)) {
-    console.error("Error: --network must be testnet, mainnet, or futurenet.");
+  if (!["local", "testnet", "mainnet", "futurenet"].includes(args.network)) {
+    console.error(
+      "Error: --network must be local, testnet, mainnet, or futurenet.",
+    );
     process.exit(1);
   }
 

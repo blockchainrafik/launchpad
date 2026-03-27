@@ -1,0 +1,17 @@
+services:
+  soroban:
+    image: stellar/quickstart:testing
+    container_name: soroban-local
+    command:
+      - --local
+      - --enable-stellar-rpc
+      - --limits
+      - unlimited
+    ports:
+      - "8000:8000"
+    volumes:
+      - soroban_data:/opt/stellar
+    restart: unless-stopped
+
+volumes:
+  soroban_data:
