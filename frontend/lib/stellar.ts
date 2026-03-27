@@ -34,9 +34,7 @@ function getRpcUrl(): string {
   return DEFAULT_SOROBAN_RPC_URL;
 }
 
-function getMercuryConfig(
-  config: NetworkConfig,
-): { baseUrl: string; token: string } | null {
+function getMercuryConfig(config: NetworkConfig): { baseUrl: string; token: string } | null {
   const explicitBaseUrl = process.env.NEXT_PUBLIC_MERCURY_BASE_URL;
   const baseUrl =
     explicitBaseUrl ??
@@ -620,10 +618,7 @@ export async function fetchTransactionHistory(
         type: typePath as TransactionItem["type"],
         ledger: readEventLedger(event),
         timestamp: readEventTimestampNumber(event),
-        id: readEventId(
-          event,
-          `${readEventTxHash(event)}-${readEventLedger(event)}`,
-        ),
+        id: readEventId(event, `${readEventTxHash(event)}-${readEventLedger(event)}`),
       };
 
       item.amount = decodeI128(data);
@@ -724,10 +719,7 @@ export async function fetchAccountOperations(
         }
 
         records.push({
-          id: readEventId(
-            event,
-            `${readEventTxHash(event)}-${readEventLedger(event)}`,
-          ),
+          id: readEventId(event, `${readEventTxHash(event)}-${readEventLedger(event)}`),
           pagingToken: String(offset + records.length),
           type: typePath as TokenActivityInfo["type"],
           amount,
@@ -738,8 +730,7 @@ export async function fetchAccountOperations(
         });
       }
 
-      const nextCursor =
-        events.length === pageSize ? String(offset + pageSize) : null;
+      const nextCursor = events.length === pageSize ? String(offset + pageSize) : null;
       return { records, nextCursor };
     }
 
