@@ -69,13 +69,13 @@ export function useSoroban() {
 
   const fetchAccountOperations = useCallback(
     (accountId: string, cursor?: string, limit?: number) =>
-      stellar.fetchAccountOperations(accountId, cursor, limit),
-    [],
+      stellar.fetchAccountOperations(accountId, networkConfig, cursor, limit),
+    [networkConfig],
   );
 
   const submitTransaction = useCallback(
-    (signedXdr: string) => stellar.submitTransaction(signedXdr),
-    [],
+    (signedXdr: string) => stellar.submitTransaction(signedXdr, networkConfig),
+    [networkConfig],
   );
   return useMemo(
     () => ({

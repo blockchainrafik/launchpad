@@ -25,6 +25,7 @@ import {
   type VestingScheduleInfo,
   type TokenActivityInfo,
 } from "@/lib/stellar";
+import { useNetwork } from "../providers/NetworkProvider";
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -367,6 +368,7 @@ function PersonalActivityTable({
 
 export default function PersonalDashboard() {
   const { connected, publicKey, connect } = useWallet();
+  const { networkConfig } = useNetwork();
   const { fetchVestingSchedule, fetchCurrentLedger, fetchAccountBalances } =
     useSoroban();
 
@@ -422,6 +424,7 @@ export default function PersonalDashboard() {
         const cursor = isLoadMore ? cursorRef.current : undefined;
         const { records, nextCursor } = await fetchAccountOperations(
           publicKey,
+          networkConfig,
           cursor ?? undefined,
           15,
         );
@@ -440,7 +443,7 @@ export default function PersonalDashboard() {
         if (isLoadMore) setTxLoadingMore(false);
       }
     },
-    [publicKey],
+    [publicKey, networkConfig],
   );
 
   // Load vesting schedule

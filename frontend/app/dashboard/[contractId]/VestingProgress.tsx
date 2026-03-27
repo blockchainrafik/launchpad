@@ -17,6 +17,7 @@ import {
   submitTransaction,
   type VestingScheduleInfo,
 } from "@/lib/stellar";
+import { useNetwork } from "@/app/providers/NetworkProvider";
 // import { CopyButton } from "@/components/ui/CopyButton";
 import { useSoroban } from "@/hooks/useSoroban";
 import { useWallet } from "@/app/hooks/useWallet";
@@ -86,6 +87,7 @@ function VestingDisplay({
 
   // Wallet integration for admin actions
   const { connected, publicKey, signTransaction, connect } = useWallet();
+  const { networkConfig } = useNetwork();
 
   // Revoke transaction state
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -119,6 +121,7 @@ function VestingDisplay({
         vestingContractId,
         schedule.recipient,
         publicKey,
+        networkConfig,
       );
 
       // Sign with Freighter
@@ -127,7 +130,7 @@ function VestingDisplay({
       });
 
       // Submit to network
-      const txHash = await submitTransaction(signedXdr);
+      const txHash = await submitTransaction(signedXdr, networkConfig);
 
       setToast({
         type: "success",
@@ -162,6 +165,7 @@ function VestingDisplay({
     connected,
     publicKey,
     signTransaction,
+    networkConfig,
     vestingContractId,
     schedule.recipient,
     onRevoked,

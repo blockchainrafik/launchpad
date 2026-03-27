@@ -2,31 +2,6 @@ import * as StellarSdk from "@stellar/stellar-sdk";
 import { type NetworkConfig } from "../types/network";
 
 // ---------------------------------------------------------------------------
-// Config — defaults to Stellar Testnet, overridable via localStorage
-// ---------------------------------------------------------------------------
-const DEFAULT_HORIZON_URL =
-  process.env.NEXT_PUBLIC_HORIZON_URL ?? "https://horizon-testnet.stellar.org";
-const DEFAULT_SOROBAN_RPC_URL =
-  process.env.NEXT_PUBLIC_SOROBAN_RPC_URL ??
-  "https://soroban-testnet.stellar.org";
-const NETWORK_PASSPHRASE =
-  process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE ?? StellarSdk.Networks.TESTNET;
-
-function getHorizonUrl(): string {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("soropad_horizon_url") || DEFAULT_HORIZON_URL;
-  }
-  return DEFAULT_HORIZON_URL;
-}
-
-function getRpcUrl(): string {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("soropad_rpc_url") || DEFAULT_SOROBAN_RPC_URL;
-  }
-  return DEFAULT_SOROBAN_RPC_URL;
-}
-
-// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 export interface TokenInfo {
@@ -74,12 +49,12 @@ export interface TokenAllowanceInfo {
 // ---------------------------------------------------------------------------
 // Soroban RPC helpers
 // ---------------------------------------------------------------------------
-function getRpc() {
-  return new StellarSdk.rpc.Server(getRpcUrl());
-}
 
-async function simulateAndAssembleTransaction(tx: StellarSdk.Transaction) {
-  const rpc = new StellarSdk.rpc.Server(getRpcUrl());
+async function simulateAndAssembleTransaction(
+  tx: StellarSdk.Transaction,
+  config: NetworkConfig,
+) {
+  const rpc = new StellarSdk.rpc.Server(config.rpcUrl);
   const simulated = await rpc.simulateTransaction(tx);
 
   if (StellarSdk.rpc.Api.isSimulationError(simulated)) {
@@ -116,7 +91,8 @@ async function simulateCall(
     .setTimeout(30)
     .build();
 
-  const sim = await getRpc().simulateTransaction(tx);
+  const rpc = new StellarSdk.rpc.Server(config.rpcUrl);
+  const sim = await rpc.simulateTransaction(tx);
 
   if (StellarSdk.rpc.Api.isSimulationError(sim)) {
     throw new Error(`Soroban simulation error (${method}): ${sim.error}`);
@@ -146,11 +122,12 @@ export async function fetchTokenAllowance(
 export async function fetchApprovedSpendersFromEvents(params: {
   contractId: string;
   ownerAddress: string;
+  config: NetworkConfig;
   maxPages?: number;
 }): Promise<string[]> {
-  const { contractId, ownerAddress, maxPages = 5 } = params;
+  const { contractId, ownerAddress, config, maxPages = 5 } = params;
 
-  const rpc = new StellarSdk.rpc.Server(getRpcUrl());
+  const rpc = new StellarSdk.rpc.Server(config.rpcUrl);
   const spenders = new Set<string>();
 
   const getEvents = (rpc as unknown as { getEvents?: (req: unknown) => Promise<unknown> }).getEvents;
@@ -434,7 +411,8 @@ export async function fetchTransactionHistory(
   // In a real app, this would be indexed.
   const startLedger = Math.max(1, currentLedger - 10000);
 
-  const response = await getRpc().getEvents({
+  const rpc = new StellarSdk.rpc.Server(config.rpcUrl);
+  const response = await rpc.getEvents({
     startLedger,
     filters: [
       {
@@ -494,11 +472,12 @@ export interface TokenActivityInfo {
  */
 export async function fetchAccountOperations(
   accountId: string,
+  config: NetworkConfig,
   cursor?: string,
   limit = 10,
 ): Promise<{ records: TokenActivityInfo[]; nextCursor: string | null }> {
   try {
-    const horizon = new StellarSdk.Horizon.Server(getHorizonUrl());
+    const horizon = new StellarSdk.Horizon.Server(config.horizonUrl);
 
     // Horizon's .forAccount() only accepts Ed25519 public keys (starting with G).
     // If the accountId is a contract ID (starting with C), we cannot query its operations this way.
@@ -841,25 +820,26 @@ export async function buildRevokeTransaction(
   vestingContractId: string,
   recipientAddress: string,
   sourcePublicKey: string,
+  config: NetworkConfig,
 ): Promise<string> {
   const contract = new StellarSdk.Contract(vestingContractId);
   const recipientScVal = new StellarSdk.Address(recipientAddress).toScVal();
 
   // Get source account
-  const horizon = new StellarSdk.Horizon.Server(getHorizonUrl());
+  const horizon = new StellarSdk.Horizon.Server(config.horizonUrl);
   const sourceAccount = await horizon.loadAccount(sourcePublicKey);
 
   // Build transaction
   const tx = new StellarSdk.TransactionBuilder(sourceAccount, {
     fee: StellarSdk.BASE_FEE,
-    networkPassphrase: NETWORK_PASSPHRASE,
+    networkPassphrase: config.passphrase,
   })
     .addOperation(contract.call("revoke", recipientScVal))
     .setTimeout(30)
     .build();
 
   // Simulate to get resource fees
-  const assembled = await simulateAndAssembleTransaction(tx);
+  const assembled = await simulateAndAssembleTransaction(tx, config);
   return assembled.build().toXDR();
 }
 
@@ -873,6 +853,7 @@ export async function buildApproveTransaction(params: {
   spenderAddress: string;
   amount: bigint;
   expirationLedger: number;
+  config: NetworkConfig;
 }): Promise<string> {
   const {
     tokenContractId,
@@ -880,6 +861,7 @@ export async function buildApproveTransaction(params: {
     spenderAddress,
     amount,
     expirationLedger,
+    config,
   } = params;
 
   const contract = new StellarSdk.Contract(tokenContractId);
@@ -888,18 +870,18 @@ export async function buildApproveTransaction(params: {
   const amountScVal = StellarSdk.nativeToScVal(BigInt(amount), { type: "i128" });
   const expirationScVal = StellarSdk.nativeToScVal(BigInt(expirationLedger), { type: "u32" });
 
-  const horizon = new StellarSdk.Horizon.Server(getHorizonUrl());
+  const horizon = new StellarSdk.Horizon.Server(config.horizonUrl);
   const sourceAccount = await horizon.loadAccount(ownerAddress);
 
   const tx = new StellarSdk.TransactionBuilder(sourceAccount, {
     fee: StellarSdk.BASE_FEE,
-    networkPassphrase: NETWORK_PASSPHRASE,
+    networkPassphrase: config.passphrase,
   })
     .addOperation(contract.call("approve", ownerScVal, spenderScVal, amountScVal, expirationScVal))
     .setTimeout(30)
     .build();
 
-  const assembled = await simulateAndAssembleTransaction(tx);
+  const assembled = await simulateAndAssembleTransaction(tx, config);
   return assembled.build().toXDR();
 }
 
@@ -913,8 +895,9 @@ export async function buildTransferFromTransaction(params: {
   fromAddress: string;
   toAddress: string;
   amount: bigint;
+  config: NetworkConfig;
 }): Promise<string> {
-  const { tokenContractId, spenderAddress, fromAddress, toAddress, amount } = params;
+  const { tokenContractId, spenderAddress, fromAddress, toAddress, amount, config } = params;
 
   const contract = new StellarSdk.Contract(tokenContractId);
   const spenderScVal = new StellarSdk.Address(spenderAddress).toScVal();
@@ -922,18 +905,18 @@ export async function buildTransferFromTransaction(params: {
   const toScVal = new StellarSdk.Address(toAddress).toScVal();
   const amountScVal = StellarSdk.nativeToScVal(BigInt(amount), { type: "i128" });
 
-  const horizon = new StellarSdk.Horizon.Server(getHorizonUrl());
+  const horizon = new StellarSdk.Horizon.Server(config.horizonUrl);
   const sourceAccount = await horizon.loadAccount(spenderAddress);
 
   const tx = new StellarSdk.TransactionBuilder(sourceAccount, {
     fee: StellarSdk.BASE_FEE,
-    networkPassphrase: NETWORK_PASSPHRASE,
+    networkPassphrase: config.passphrase,
   })
     .addOperation(contract.call("transfer_from", spenderScVal, fromScVal, toScVal, amountScVal))
     .setTimeout(30)
     .build();
 
-  const assembled = await simulateAndAssembleTransaction(tx);
+  const assembled = await simulateAndAssembleTransaction(tx, config);
   return assembled.build().toXDR();
 }
 
@@ -989,13 +972,16 @@ export async function buildBurnTransaction(
  * Submit a signed transaction XDR to the network.
  * Returns the transaction hash on success.
  */
-export async function submitTransaction(signedXdr: string): Promise<string> {
+export async function submitTransaction(
+  signedXdr: string,
+  config: NetworkConfig,
+): Promise<string> {
   const tx = StellarSdk.TransactionBuilder.fromXDR(
     signedXdr,
-    NETWORK_PASSPHRASE,
+    config.passphrase,
   );
 
-  const rpc = new StellarSdk.rpc.Server(getRpcUrl());
+  const rpc = new StellarSdk.rpc.Server(config.rpcUrl);
   const result = await rpc.sendTransaction(tx as StellarSdk.Transaction);
 
   if (result.status === "ERROR") {

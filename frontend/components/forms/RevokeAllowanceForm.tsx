@@ -10,6 +10,7 @@ import { PreflightCheckDisplay } from "@/components/ui/PreflightCheck";
 import { useTransactionSimulator } from "@/hooks/useTransactionSimulator";
 import { useWallet } from "@/app/hooks/useWallet";
 import { buildApproveTransaction, submitTransaction } from "@/lib/stellar";
+import { useNetwork } from "@/app/providers/NetworkProvider";
 import { AlertCircle, CheckCircle, Trash2, Loader2 } from "lucide-react";
 
 const revokeSchema = z.object({
@@ -39,6 +40,7 @@ export function RevokeAllowanceForm({ onSuccess, onError }: RevokeAllowanceFormP
   const [showConfirm, setShowConfirm] = useState(false);
 
   const { connected, publicKey, signTransaction, connect } = useWallet();
+  const { networkConfig } = useNetwork();
   const simulator = useTransactionSimulator();
 
   const {
@@ -104,10 +106,11 @@ export function RevokeAllowanceForm({ onSuccess, onError }: RevokeAllowanceFormP
         spenderAddress: formData.spenderAddress,
         amount: BigInt(0),
         expirationLedger: 1000,
+        config: networkConfig,
       });
 
       const signedXdr = await signTransaction(xdr);
-      const hash = await submitTransaction(signedXdr);
+      const hash = await submitTransaction(signedXdr, networkConfig);
       setTxHash(hash);
       onSuccess?.(hash);
       reset();

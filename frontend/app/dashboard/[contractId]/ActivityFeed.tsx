@@ -12,6 +12,7 @@ import {
   // truncateAddress,
   type TokenActivityInfo,
 } from "@/lib/stellar";
+import { useNetwork } from "@/app/providers/NetworkProvider";
 import { ExplorerLink } from "@/components/ui/ExplorerLink";
 
 export default function ActivityFeed({ accountId }: { accountId: string }) {
@@ -20,6 +21,7 @@ export default function ActivityFeed({ accountId }: { accountId: string }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { networkConfig } = useNetwork();
 
   // Use refs to avoid closure stale state in intervals
   const cursorRef = useRef<string | null>(null);
@@ -38,6 +40,7 @@ export default function ActivityFeed({ accountId }: { accountId: string }) {
 
         const { records, nextCursor: newCursor } = await fetchAccountOperations(
           accountId,
+          networkConfig,
           fetchCursor ?? undefined,
           10,
         );
@@ -65,7 +68,7 @@ export default function ActivityFeed({ accountId }: { accountId: string }) {
         if (isLoadMore) setLoadingMore(false);
       }
     },
-    [accountId],
+    [accountId, networkConfig],
   );
 
   // Initial load

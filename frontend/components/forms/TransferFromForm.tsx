@@ -15,6 +15,7 @@ import {
   parseTokenAmount,
   submitTransaction,
 } from "@/lib/stellar";
+import { useNetwork } from "@/app/providers/NetworkProvider";
 import { AlertCircle, CheckCircle, Send, Loader2 } from "lucide-react";
 
 const transferFromSchema = z.object({
@@ -47,6 +48,7 @@ export function TransferFromForm({ onSuccess, onError }: TransferFromFormProps) 
   const [txHash, setTxHash] = useState<string | null>(null);
 
   const { connected, publicKey, signTransaction, connect } = useWallet();
+  const { networkConfig } = useNetwork();
   const simulator = useTransactionSimulator();
 
   const {
@@ -119,10 +121,11 @@ export function TransferFromForm({ onSuccess, onError }: TransferFromFormProps) 
         fromAddress: formData.fromAddress,
         toAddress: formData.toAddress,
         amount: rawAmount,
+        config: networkConfig,
       });
 
       const signedXdr = await signTransaction(xdr);
-      const hash = await submitTransaction(signedXdr);
+      const hash = await submitTransaction(signedXdr, networkConfig);
       setTxHash(hash);
       onSuccess?.(hash);
       reset();

@@ -10,6 +10,7 @@ import { PreflightCheckDisplay } from "@/components/ui/PreflightCheck";
 import { useTransactionSimulator } from "@/hooks/useTransactionSimulator";
 import { useWallet } from "@/app/hooks/useWallet";
 import { buildApproveTransaction, fetchTokenDecimals, parseTokenAmount, submitTransaction } from "@/lib/stellar";
+import { useNetwork } from "@/app/providers/NetworkProvider";
 import { AlertCircle, CheckCircle, Rocket, Loader2 } from "lucide-react";
 
 const approveSchema = z.object({
@@ -45,6 +46,7 @@ export function ApproveForm({ onSuccess, onError }: ApproveFormProps) {
   const [txHash, setTxHash] = useState<string | null>(null);
 
   const { connected, publicKey, signTransaction, connect } = useWallet();
+  const { networkConfig } = useNetwork();
   const simulator = useTransactionSimulator();
 
   const {
@@ -123,10 +125,11 @@ export function ApproveForm({ onSuccess, onError }: ApproveFormProps) {
         spenderAddress: formData.spenderAddress,
         amount: rawAmount,
         expirationLedger,
+        config: networkConfig,
       });
 
       const signedXdr = await signTransaction(xdr);
-      const hash = await submitTransaction(signedXdr);
+      const hash = await submitTransaction(signedXdr, networkConfig);
       setTxHash(hash);
       onSuccess?.(hash);
       reset();

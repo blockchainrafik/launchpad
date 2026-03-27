@@ -12,14 +12,14 @@ export interface NetworkConfig {
 export const NETWORKS: Record<NetworkType, NetworkConfig> = {
   testnet: {
     network: "testnet",
-    horizonUrl: "https://horizon-testnet.stellar.org",
-    rpcUrl: "https://soroban-testnet.stellar.org",
+    horizonUrl: process.env.NEXT_PUBLIC_TESTNET_HORIZON_URL ?? "https://horizon-testnet.stellar.org",
+    rpcUrl: process.env.NEXT_PUBLIC_TESTNET_RPC_URL ?? "https://soroban-testnet.stellar.org",
     passphrase: StellarSdk.Networks.TESTNET,
   },
   mainnet: {
     network: "mainnet",
-    horizonUrl: "https://horizon.stellar.org",
-    rpcUrl: "https://mainnet.stellar.org:443",
+    horizonUrl: process.env.NEXT_PUBLIC_MAINNET_HORIZON_URL ?? "https://horizon.stellar.org",
+    rpcUrl: process.env.NEXT_PUBLIC_MAINNET_RPC_URL ?? "https://mainnet.stellar.org:443",
     passphrase: StellarSdk.Networks.PUBLIC,
   },
 };

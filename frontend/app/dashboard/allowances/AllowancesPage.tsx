@@ -58,6 +58,7 @@ export function AllowancesPage({
         fetchApprovedSpendersFromEvents({
           contractId,
           ownerAddress: publicKey,
+          config: networkConfig,
           maxPages: 5,
         }),
       ]);
@@ -107,10 +108,11 @@ export function AllowancesPage({
       spenderAddress,
       amount: BigInt(0),
       expirationLedger: 1000,
+      config: networkConfig,
     });
 
     const signedXdr = await signTransaction(xdr);
-    await submitTransaction(signedXdr);
+    await submitTransaction(signedXdr, networkConfig);
     await loadAllowances();
   };
 

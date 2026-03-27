@@ -12,6 +12,7 @@ import { type NetworkConfig, type NetworkType, NETWORKS } from "../../types/netw
 
 interface NetworkContextValue {
   networkConfig: NetworkConfig;
+  network: NetworkType;
   setNetwork: (network: NetworkType) => void;
   mounted: boolean;
 }
@@ -37,10 +38,11 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       networkConfig,
+      network,
       setNetwork,
       mounted,
     }),
-    [networkConfig, setNetwork, mounted]
+    [networkConfig, network, mounted]
   );
 
   return (
