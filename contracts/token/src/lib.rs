@@ -522,17 +522,17 @@ mod test {
         let (env, client, _, _) = setup();
         let u1 = Address::generate(&env);
         let u2 = Address::generate(&env);
-        
+
         let mut to = soroban_sdk::Vec::new(&env);
         to.push_back(u1.clone());
         to.push_back(u2.clone());
-        
+
         let mut amounts = soroban_sdk::Vec::new(&env);
         amounts.push_back(100i128);
         amounts.push_back(200i128);
-        
+
         client.mint_batch(&to, &amounts);
-        
+
         assert_eq!(client.balance(&u1), 100i128);
         assert_eq!(client.balance(&u2), 200i128);
     }
@@ -542,14 +542,14 @@ mod test {
     fn test_mint_batch_len_mismatch() {
         let (env, client, _, _) = setup();
         let u1 = Address::generate(&env);
-        
+
         let mut to = soroban_sdk::Vec::new(&env);
         to.push_back(u1);
-        
+
         let mut amounts = soroban_sdk::Vec::new(&env);
         amounts.push_back(100i128);
         amounts.push_back(200i128);
-        
+
         client.mint_batch(&to, &amounts);
     }
 
