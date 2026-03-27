@@ -225,6 +225,21 @@
                         "key": {
                           "vec": [
                             {
+                              "symbol": "TotalBurned"
+                            }
+                          ]
+                        },
+                        "val": {
+                          "i128": {
+                            "hi": 0,
+                            "lo": 0
+                          }
+                        }
+                      },
+                      {
+                        "key": {
+                          "vec": [
+                            {
                               "symbol": "TotalSupply"
                             }
                           ]
@@ -565,7 +580,7 @@
             "data": {
               "vec": [
                 {
-                  "string": "caught panic 'insufficient allowance' from contract function 'Symbol(obj#69)'"
+                  "string": "caught panic 'insufficient allowance' from contract function 'Symbol(obj#73)'"
                 },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"

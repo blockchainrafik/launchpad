@@ -140,6 +140,21 @@
                         "key": {
                           "vec": [
                             {
+                              "symbol": "TotalBurned"
+                            }
+                          ]
+                        },
+                        "val": {
+                          "i128": {
+                            "hi": 0,
+                            "lo": 0
+                          }
+                        }
+                      },
+                      {
+                        "key": {
+                          "vec": [
+                            {
                               "symbol": "TotalSupply"
                             }
                           ]
@@ -335,7 +350,7 @@
               }
             ],
             "data": {
-              "string": "caught panic 'contract URI not set' from contract function 'Symbol(obj#55)'"
+              "string": "caught panic 'contract URI not set' from contract function 'Symbol(obj#59)'"
             }
           }
         }

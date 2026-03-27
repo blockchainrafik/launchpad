@@ -140,6 +140,21 @@
                         "key": {
                           "vec": [
                             {
+                              "symbol": "TotalBurned"
+                            }
+                          ]
+                        },
+                        "val": {
+                          "i128": {
+                            "hi": 0,
+                            "lo": 0
+                          }
+                        }
+                      },
+                      {
+                        "key": {
+                          "vec": [
+                            {
                               "symbol": "TotalSupply"
                             }
                           ]
@@ -349,7 +364,7 @@
             "data": {
               "vec": [
                 {
-                  "string": "caught panic 'attempt to add with overflow' from contract function 'Symbol(mint)'"
+                  "string": "caught panic 'total_supply overflow' from contract function 'Symbol(mint)'"
                 },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"

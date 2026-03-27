@@ -365,6 +365,21 @@
                         "key": {
                           "vec": [
                             {
+                              "symbol": "TotalBurned"
+                            }
+                          ]
+                        },
+                        "val": {
+                          "i128": {
+                            "hi": 0,
+                            "lo": 0
+                          }
+                        }
+                      },
+                      {
+                        "key": {
+                          "vec": [
+                            {
                               "symbol": "TotalSupply"
                             }
                           ]
@@ -930,7 +945,7 @@
             "data": {
               "vec": [
                 {
-                  "string": "caught panic 'account is frozen' from contract function 'Symbol(obj#143)'"
+                  "string": "caught panic 'account is frozen' from contract function 'Symbol(obj#155)'"
                 },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"

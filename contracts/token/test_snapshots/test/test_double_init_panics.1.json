@@ -140,6 +140,21 @@
                         "key": {
                           "vec": [
                             {
+                              "symbol": "TotalBurned"
+                            }
+                          ]
+                        },
+                        "val": {
+                          "i128": {
+                            "hi": 0,
+                            "lo": 0
+                          }
+                        }
+                      },
+                      {
+                        "key": {
+                          "vec": [
+                            {
                               "symbol": "TotalSupply"
                             }
                           ]
@@ -359,7 +374,7 @@
             "data": {
               "vec": [
                 {
-                  "string": "caught panic 'already initialized' from contract function 'Symbol(obj#59)'"
+                  "string": "caught panic 'already initialized' from contract function 'Symbol(obj#63)'"
                 },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"

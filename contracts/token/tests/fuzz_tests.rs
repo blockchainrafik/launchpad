@@ -181,11 +181,13 @@ proptest! {
         let (_, client, admin, _, _) = setup_env();
         let supply_before = client.total_supply();
         let bal_before    = client.balance(&admin);
+        let burned_before = client.total_burned();
 
         client.burn(&admin, &amount);
 
         prop_assert_eq!(client.balance(&admin), bal_before - amount);
         prop_assert_eq!(client.total_supply(), supply_before - amount);
+        prop_assert_eq!(client.total_burned(), burned_before + amount);
         assert_supply_invariant(&client, &[&admin]);
         assert_non_negative_balances(&client, &[&admin]);
     }
@@ -196,12 +198,14 @@ proptest! {
         let (_, client, admin, _, _) = setup_env();
         let supply_before = client.total_supply();
         let bal_before    = client.balance(&admin);
+        let burned_before = client.total_burned();
 
         client.burn(&admin, &amount);
         client.mint(&admin, &amount);
 
         prop_assert_eq!(client.balance(&admin), bal_before);
         prop_assert_eq!(client.total_supply(), supply_before);
+        prop_assert_eq!(client.total_burned(), burned_before + amount);
     }
 
     // ── Transfer ────────────────────────────────────────────────────────

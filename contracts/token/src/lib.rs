@@ -67,6 +67,7 @@ impl TokenContract {
         env.storage().instance().set(&DataKey::Name, &name);
         env.storage().instance().set(&DataKey::Symbol, &symbol);
         env.storage().instance().set(&DataKey::TotalSupply, &0i128);
+        env.storage().instance().set(&DataKey::TotalBurned, &0i128);
 
         if initial_supply > 0 {
             Self::_mint(&env, &admin, initial_supply);
@@ -332,7 +333,7 @@ impl TokenContract {
             .instance()
             .get(&DataKey::TotalSupply)
             .unwrap_or(0);
-        let new_supply = supply + amount;
+        let new_supply = supply.checked_add(amount).expect("total_supply overflow");
 
         if let Some(cap) = env
             .storage()
@@ -344,7 +345,8 @@ impl TokenContract {
 
         let key = DataKey::Balance(to.clone());
         let balance: i128 = env.storage().persistent().get(&key).unwrap_or(0);
-        env.storage().persistent().set(&key, &(balance + amount));
+        let new_balance = balance.checked_add(amount).expect("balance overflow");
+        env.storage().persistent().set(&key, &new_balance);
 
         env.storage()
             .instance()
@@ -358,25 +360,32 @@ impl TokenContract {
         let key = DataKey::Balance(from.clone());
         let balance: i128 = env.storage().persistent().get(&key).unwrap_or(0);
         assert!(balance >= amount, "insufficient balance to burn");
-        env.storage().persistent().set(&key, &(balance - amount));
+        let new_balance = balance
+            .checked_sub(amount)
+            .expect("balance underflow on burn");
+        env.storage().persistent().set(&key, &new_balance);
 
         let supply: i128 = env
             .storage()
             .instance()
             .get(&DataKey::TotalSupply)
             .unwrap_or(0);
+        let new_supply = supply
+            .checked_sub(amount)
+            .expect("total_supply underflow on burn");
         env.storage()
             .instance()
-            .set(&DataKey::TotalSupply, &(supply - amount));
+            .set(&DataKey::TotalSupply, &new_supply);
 
         let burned: i128 = env
             .storage()
             .instance()
             .get(&DataKey::TotalBurned)
             .unwrap_or(0);
+        let new_total_burned = burned.checked_add(amount).expect("total_burned overflow");
         env.storage()
             .instance()
-            .set(&DataKey::TotalBurned, &(burned + amount));
+            .set(&DataKey::TotalBurned, &new_total_burned);
 
         env.events()
             .publish((symbol_short!("burn"), from.clone()), amount);
@@ -510,6 +519,21 @@ mod test {
     }
 
     #[test]
+    fn test_burn_admin_updates_total_burned() {
+        let (_, client, admin, user) = setup();
+        client.transfer(&admin, &user, &100_0000000i128);
+
+        client.burn_admin(&user, &40_0000000i128);
+
+        assert_eq!(client.balance(&user), 60_0000000i128);
+        assert_eq!(client.total_burned(), 40_0000000i128);
+        assert_eq!(
+            client.total_supply(),
+            1_000_000_0000000i128 - 40_0000000i128
+        );
+    }
+
+    #[test]
     fn test_burn_updates_total_burned_and_total_supply_each_time() {
         let (_, client, admin, _) = setup();
 
@@ -525,6 +549,20 @@ mod test {
         assert_eq!(
             client.total_supply(),
             1_000_000_0000000i128 - 350_0000000i128
+        );
+    }
+
+    #[test]
+    fn test_mint_does_not_change_total_burned() {
+        let (_, client, admin, user) = setup();
+
+        client.burn(&admin, &100_0000000i128);
+        client.mint(&user, &25_0000000i128);
+
+        assert_eq!(client.total_burned(), 100_0000000i128);
+        assert_eq!(
+            client.total_supply(),
+            1_000_000_0000000i128 - 100_0000000i128 + 25_0000000i128
         );
     }
 
