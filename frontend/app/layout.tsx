@@ -21,7 +21,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"
+    process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000",
   ),
   title: "SoroPad — Soroban Token Launchpad",
   description:
@@ -63,7 +63,7 @@ export default function RootLayout({
                   >
                     <p>
                       Built for the{" "}
-                      
+                      <a
                         href="https://www.drips.network/wave"
                         className="text-stellar-400 hover:underline"
                         target="_blank"

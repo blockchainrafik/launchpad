@@ -1,32 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Globe, ChevronDown } from "lucide-react";
 
-const SUPPORTED_LOCALES = [
-  { code: "en", label: "English" },
-] as const;
+const SUPPORTED_LOCALES = [{ code: "en", label: "English" }] as const;
 
 type LocaleCode = (typeof SUPPORTED_LOCALES)[number]["code"];
 
 const STORAGE_KEY = "soropad:locale";
 
-export function LanguageSwitcher() {
-  const [currentLocale, setCurrentLocale] = useState<LocaleCode>("en");
-  const [isOpen, setIsOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY) as LocaleCode | null;
-      if (stored && SUPPORTED_LOCALES.some((l) => l.code === stored)) {
-        setCurrentLocale(stored);
-      }
-    } catch {
-      // localStorage unavailable
+function getInitialLocale(): LocaleCode {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY) as LocaleCode | null;
+    if (stored && SUPPORTED_LOCALES.some((l) => l.code === stored)) {
+      return stored;
     }
-  }, []);
+  } catch {
+    // localStorage unavailable
+  }
+  return "en";
+}
+
+export function LanguageSwitcher() {
+  const [currentLocale, setCurrentLocale] =
+    useState<LocaleCode>(getInitialLocale);
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleSelect = (code: LocaleCode) => {
     setCurrentLocale(code);
@@ -38,13 +36,8 @@ export function LanguageSwitcher() {
     }
   };
 
-  if (!mounted) {
-    return (
-      <div className="h-9 w-28 animate-pulse rounded-lg border border-white/5 bg-white/5" />
-    );
-  }
-
-  const currentLabel = SUPPORTED_LOCALES.find((l) => l.code === currentLocale)?.label ?? "English";
+  const currentLabel =
+    SUPPORTED_LOCALES.find((l) => l.code === currentLocale)?.label ?? "English";
 
   return (
     <div className="relative">

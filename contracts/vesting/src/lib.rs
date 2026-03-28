@@ -492,11 +492,9 @@ mod test {
         let (client, admin, recipient) = (
             VestingContractClient::new(&env, &env.register_contract(None, VestingContract)),
             Address::generate(&env),
-            Address::generate(&env)
+            Address::generate(&env),
         );
         client.initialize(&admin, &Address::generate(&env));
         client.create_schedule(&recipient, &0, &100, &200);
     }
 }
-
-

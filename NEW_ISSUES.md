@@ -8,21 +8,22 @@ Complexity levels match the Stellar Wave Program on Drips:
 - 🟡 **Medium** (150 pts) — Standard features or involved bug fixes
 - 🔴 **High** (200 pts) — Complex features, integrations, or refactors
 
----
+---k
 
 ## ⚠️ Parallelism & Conflict Guide
 
 Use this table when assigning issues to different contributors simultaneously.
 
-| Zone | Issues | Shared Files / Risk | Recommendation |
-|------|--------|---------------------|----------------|
-| ✅ **Contracts** | #17, #20, #24 | Each touches different contract files / CI config — no overlap | Safe to assign all 3 in parallel |
-| ✅ **New files only** | #19, #21, #29 | Each creates brand-new files (E2E tests, `lib/indexer.ts`, `PersonalDashboard` list) | Safe in parallel |
-| ⚠️ **Deploy flow** | #18, #25, #28 | All modify `DeployForm.tsx` or deploy step components | Assign **sequentially** (pick any order) or assign to same person |
-| ⚠️ **Token dashboard** | #22, #23 | Both add new data/hooks wired into `TokenDashboard.tsx` | Assign sequentially or to same person |
-| ✅ **Standalone** | #26, #27 | A11y audit produces a report + CSS fixes; i18n extracts strings into `messages/`. Minimal overlap if i18n goes **after** a11y fixes land | Safe in parallel if #27 is based on post-#26 branch, otherwise assign sequentially |
+| Zone                   | Issues        | Shared Files / Risk                                                                                                                      | Recommendation                                                                     |
+| ---------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| ✅ **Contracts**       | #17, #20, #24 | Each touches different contract files / CI config — no overlap                                                                           | Safe to assign all 3 in parallel                                                   |
+| ✅ **New files only**  | #19, #21, #29 | Each creates brand-new files (E2E tests, `lib/indexer.ts`, `PersonalDashboard` list)                                                     | Safe in parallel                                                                   |
+| ⚠️ **Deploy flow**     | #18, #25, #28 | All modify `DeployForm.tsx` or deploy step components                                                                                    | Assign **sequentially** (pick any order) or assign to same person                  |
+| ⚠️ **Token dashboard** | #22, #23      | Both add new data/hooks wired into `TokenDashboard.tsx`                                                                                  | Assign sequentially or to same person                                              |
+| ✅ **Standalone**      | #26, #27      | A11y audit produces a report + CSS fixes; i18n extracts strings into `messages/`. Minimal overlap if i18n goes **after** a11y fixes land | Safe in parallel if #27 is based on post-#26 branch, otherwise assign sequentially |
 
 **TL;DR — you can safely assign all 13 issues across 8+ contributors with only two sequencing constraints:**
+
 1. **Deploy flow group** (#18 → #25 → #28) — merge one before starting the next
 2. **Dashboard group** (#22 → #23) — merge #22 before #23
 
