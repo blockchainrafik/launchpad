@@ -9,8 +9,6 @@ const DEFAULT_HORIZON_URL =
 const DEFAULT_SOROBAN_RPC_URL =
   process.env.NEXT_PUBLIC_SOROBAN_RPC_URL ??
   "https://soroban-testnet.stellar.org";
-const NETWORK_PASSPHRASE =
-  process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE ?? StellarSdk.Networks.TESTNET;
 const DEFAULT_MERCURY_BASE_URL_TESTNET =
   process.env.NEXT_PUBLIC_MERCURY_TESTNET_URL ??
   "https://testnet.mercurydata.app/rest";
@@ -25,13 +23,6 @@ function getHorizonUrl(): string {
     return localStorage.getItem("soropad_horizon_url") || DEFAULT_HORIZON_URL;
   }
   return DEFAULT_HORIZON_URL;
-}
-
-function getRpcUrl(): string {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("soropad_rpc_url") || DEFAULT_SOROBAN_RPC_URL;
-  }
-  return DEFAULT_SOROBAN_RPC_URL;
 }
 
 function getMercuryConfig(config: NetworkConfig): { baseUrl: string; token: string } | null {

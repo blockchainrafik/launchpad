@@ -85,24 +85,42 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     () => getDefaultHorizonUrl(networkConfig.network),
     [networkConfig.network],
   );
-  const [rpcUrl, setRpcUrlState] = useState(defaultRpcUrl);
-  const [horizonUrl, setHorizonUrlState] = useState(defaultHorizonUrl);
+  
+  const [rpcUrl, setRpcUrlState] = useState(() => {
+    try {
+      const stored = localStorage.getItem(getRpcStorageKey(networkConfig.network));
+      return stored ?? defaultRpcUrl;
+    } catch {
+      return defaultRpcUrl;
+    }
+  });
+  
+  const [horizonUrl, setHorizonUrlState] = useState(() => {
+    try {
+      const stored = localStorage.getItem(getHorizonStorageKey(networkConfig.network));
+      return stored ?? defaultHorizonUrl;
+    } catch {
+      return defaultHorizonUrl;
+    }
+  });
 
-  // Hydrate from localStorage when the active network changes.
+  // Update URLs when network changes
   useEffect(() => {
     try {
       const storedRpc = localStorage.getItem(getRpcStorageKey(networkConfig.network));
-      const storedHorizon = localStorage.getItem(
-        getHorizonStorageKey(networkConfig.network),
-      );
-
-      setRpcUrlState(storedRpc ?? defaultRpcUrl);
-      setHorizonUrlState(storedHorizon ?? defaultHorizonUrl);
+      const storedHorizon = localStorage.getItem(getHorizonStorageKey(networkConfig.network));
+      
+      if (storedRpc !== rpcUrl) {
+        setRpcUrlState(storedRpc ?? defaultRpcUrl);
+      }
+      if (storedHorizon !== horizonUrl) {
+        setHorizonUrlState(storedHorizon ?? defaultHorizonUrl);
+      }
     } catch {
-      setRpcUrlState(defaultRpcUrl);
-      setHorizonUrlState(defaultHorizonUrl);
+      if (rpcUrl !== defaultRpcUrl) setRpcUrlState(defaultRpcUrl);
+      if (horizonUrl !== defaultHorizonUrl) setHorizonUrlState(defaultHorizonUrl);
     }
-  }, [defaultHorizonUrl, defaultRpcUrl, networkConfig.network]);
+  }, [networkConfig.network, defaultRpcUrl, defaultHorizonUrl, rpcUrl, horizonUrl]);
 
   const setRpcUrl = useCallback((url: string) => {
     setRpcUrlState(url);
