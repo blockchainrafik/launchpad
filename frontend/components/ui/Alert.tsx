@@ -31,7 +31,11 @@ const variants = {
  */
 export function Alert({ className, children, variant = "default" }: AlertProps) {
   return (
-    <div className={cn("rounded-lg p-4", variants[variant], className)}>
+    <div 
+      role="alert"
+      aria-live="polite"
+      className={cn("rounded-lg p-4", variants[variant], className)}
+    >
       {children}
     </div>
   );

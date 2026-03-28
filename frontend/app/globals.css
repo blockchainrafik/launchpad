@@ -169,3 +169,46 @@ body {
   background: rgba(45, 125, 255, 0.08);
   border-color: rgba(45, 125, 255, 0.5);
 }
+
+/* ── Focus indicators for WCAG 2.1 AA compliance ──────────────────── */
+:focus-visible {
+  outline: 2px solid #54a3ff;
+  outline-offset: 2px;
+}
+
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible {
+  outline: 2px solid #54a3ff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(45, 125, 255, 0.2);
+}
+
+a:focus-visible {
+  outline: 2px solid #54a3ff;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #54a3ff;
+  outline-offset: 0;
+}
+
+/* ── Skip link for keyboard navigation ────────────────────────────── */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  z-index: 9999;
+  padding: 1rem;
+  background: #2d7dff;
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+}

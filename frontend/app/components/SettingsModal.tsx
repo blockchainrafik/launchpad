@@ -210,12 +210,13 @@ export function SettingsModal() {
       <dialog
         ref={dialogRef}
         onClose={handleClose}
+        aria-labelledby="settings-title"
         className="w-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 max-w-lg rounded-2xl border border-white/10 bg-void-800 p-0 text-white backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
         <div className="flex flex-col gap-6 p-6">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Network Settings</h2>
+            <h2 id="settings-title" className="text-lg font-semibold">Network Settings</h2>
             <button
               onClick={handleClose}
               className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
@@ -232,11 +233,12 @@ export function SettingsModal() {
 
           {/* Soroban RPC URL */}
           <div className="flex flex-col gap-1.5">
-            <label className="ml-1 text-sm font-medium text-gray-300">
+            <label htmlFor="rpc-url" className="ml-1 text-sm font-medium text-gray-300">
               Soroban RPC URL
             </label>
             <div className="relative">
               <input
+                id="rpc-url"
                 type="url"
                 value={draftRpc}
                 onChange={(e) => {
@@ -245,28 +247,31 @@ export function SettingsModal() {
                   setRpcError("");
                 }}
                 placeholder={defaultRpcUrl}
+                aria-describedby={rpcError ? "rpc-error" : undefined}
+                aria-invalid={rpcStatus === "invalid"}
                 className={`w-full rounded-xl border bg-void-800/50 px-4 py-3 pr-10 text-white placeholder:text-gray-500 transition-all duration-300 focus:outline-none focus:ring-1 ${
                   rpcStatus === "invalid"
                     ? "border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20"
                     : "border-stellar-500/10 focus:border-stellar-500/40 focus:ring-stellar-500/20"
                 }`}
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2" aria-hidden="true">
                 <StatusIcon status={rpcStatus} />
               </span>
             </div>
             {rpcError && (
-              <span className="ml-1 text-xs text-red-400">{rpcError}</span>
+              <span id="rpc-error" className="ml-1 text-xs text-red-400" role="alert">{rpcError}</span>
             )}
           </div>
 
           {/* Horizon URL */}
           <div className="flex flex-col gap-1.5">
-            <label className="ml-1 text-sm font-medium text-gray-300">
+            <label htmlFor="horizon-url" className="ml-1 text-sm font-medium text-gray-300">
               Horizon URL
             </label>
             <div className="relative">
               <input
+                id="horizon-url"
                 type="url"
                 value={draftHorizon}
                 onChange={(e) => {
@@ -275,18 +280,20 @@ export function SettingsModal() {
                   setHorizonError("");
                 }}
                 placeholder={defaultHorizonUrl}
+                aria-describedby={horizonError ? "horizon-error" : undefined}
+                aria-invalid={horizonStatus === "invalid"}
                 className={`w-full rounded-xl border bg-void-800/50 px-4 py-3 pr-10 text-white placeholder:text-gray-500 transition-all duration-300 focus:outline-none focus:ring-1 ${
                   horizonStatus === "invalid"
                     ? "border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20"
                     : "border-stellar-500/10 focus:border-stellar-500/40 focus:ring-stellar-500/20"
                 }`}
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2" aria-hidden="true">
                 <StatusIcon status={horizonStatus} />
               </span>
             </div>
             {horizonError && (
-              <span className="ml-1 text-xs text-red-400">{horizonError}</span>
+              <span id="horizon-error" className="ml-1 text-xs text-red-400" role="alert">{horizonError}</span>
             )}
           </div>
 
