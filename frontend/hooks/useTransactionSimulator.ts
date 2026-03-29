@@ -13,6 +13,7 @@ import {
   simulateCreateSchedule,
   simulateApprove,
   simulateRevokeAllowance,
+  simulateTokenDeployment,
   type PreflightCheckResult,
 } from "@/lib/transactionSimulator";
 import * as StellarSdk from "@stellar/stellar-sdk";
@@ -148,6 +149,32 @@ export function useTransactionSimulator() {
           vestingContractId,
           recipientAddress,
           adminAddress,
+          networkConfig,
+        ),
+      );
+    },
+
+    /**
+     * Simulate a token deployment pre-flight check.
+     * Validates RPC connectivity, admin account existence, and argument
+     * encoding without submitting any transaction.
+     */
+    async checkTokenDeployment(
+      adminAddress: string,
+      name: string,
+      symbol: string,
+      decimals: number,
+      initialSupply: bigint,
+      maxSupply: bigint | null,
+    ): Promise<PreflightCheckResult> {
+      return runSimulation(() =>
+        simulateTokenDeployment(
+          adminAddress,
+          name,
+          symbol,
+          decimals,
+          initialSupply,
+          maxSupply,
           networkConfig,
         ),
       );

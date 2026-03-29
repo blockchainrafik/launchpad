@@ -56,7 +56,6 @@ export default function DeployForm() {
   const COOLDOWN_MS = 60_000;
 
   const simulator = useTransactionSimulator();
-  console.log(simulator);
 
   const {
     register,
@@ -252,22 +251,39 @@ export default function DeployForm() {
                 variant="secondary"
                 onClick={async () => {
                   const formData = watch();
-                  console.log(formData);
                   setPreflightResult({
                     isLoading: true,
                     success: false,
                     errors: [],
                     warnings: [],
                   });
-                  // Pre-flight check simulation would go here
-                  // For now, simulate success after a delay
-                  await new Promise((resolve) => setTimeout(resolve, 1000));
-                  setPreflightResult({
-                    isLoading: false,
-                    success: true,
-                    errors: [],
-                    warnings: [],
-                  });
+                  try {
+                    const result = await simulator.checkTokenDeployment(
+                      formData.adminAddress,
+                      formData.name,
+                      formData.symbol,
+                      formData.decimals,
+                      BigInt(Math.round((formData.initialSupply ?? 0) * 10 ** formData.decimals)),
+                      formData.maxSupply != null
+                        ? BigInt(Math.round(formData.maxSupply * 10 ** formData.decimals))
+                        : null,
+                    );
+                    setPreflightResult({
+                      isLoading: false,
+                      success: result.success,
+                      errors: result.errors,
+                      warnings: result.warnings,
+                    });
+                  } catch (error) {
+                    const errorMessage =
+                      error instanceof Error ? error.message : "Unknown error";
+                    setPreflightResult({
+                      isLoading: false,
+                      success: false,
+                      errors: [errorMessage],
+                      warnings: [],
+                    });
+                  }
                 }}
                 disabled={
                   !isValid ||
