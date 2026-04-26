@@ -79,8 +79,7 @@ impl VestingContract {
         pending.require_auth();
         env.storage().instance().set(&DataKey::Admin, &pending);
         env.storage().instance().remove(&DataKey::PendingAdmin);
-        env.events()
-            .publish((symbol_short!("acc_adm"),), pending);
+        env.events().publish((symbol_short!("acc_adm"),), pending);
     }
 
     /// Create a cliff + linear vesting schedule for `recipient`.
@@ -104,7 +103,7 @@ impl VestingContract {
             .get(&DataKey::Admin)
             .expect("not initialized");
         admin.require_auth();
-        
+
         assert!(total_amount > 0, "total_amount must be positive");
         assert!(
             end_ledger > cliff_ledger,
@@ -125,11 +124,7 @@ impl VestingContract {
 
         // Atomically transfer tokens from admin to this contract
         let token_client = soroban_sdk::token::Client::new(&env, &token_addr);
-        token_client.transfer(
-            &admin,
-            &env.current_contract_address(),
-            &total_amount,
-        );
+        token_client.transfer(&admin, &env.current_contract_address(), &total_amount);
 
         let schedule = VestingSchedule {
             recipient: recipient.clone(),
@@ -141,7 +136,7 @@ impl VestingContract {
         };
 
         env.storage().persistent().set(&key, &schedule);
-        
+
         // Extend TTL for the schedule to prevent archiving during vesting period
         let current_ledger = env.ledger().sequence();
         let ttl_ledgers = if end_ledger > current_ledger {
@@ -176,7 +171,7 @@ impl VestingContract {
 
         schedule.released += releasable;
         env.storage().persistent().set(&key, &schedule);
-        
+
         // Extend TTL for the schedule to prevent archiving
         let ttl_ledgers = schedule.end_ledger - env.ledger().sequence();
         if ttl_ledgers > 0 {
@@ -469,7 +464,7 @@ mod test {
 
         client.initialize(&admin, &token_addr);
         asset_client.mint(&admin, &1000);
-        
+
         client.create_schedule(&recipient, &1000, &100, &200);
 
         env.ledger().set_sequence_number(150);
@@ -495,7 +490,7 @@ mod test {
 
         client.initialize(&admin, &token_addr);
         asset_client.mint(&admin, &1000);
-        
+
         client.create_schedule(&recipient, &1000, &100, &200);
 
         env.ledger().set_sequence_number(125);

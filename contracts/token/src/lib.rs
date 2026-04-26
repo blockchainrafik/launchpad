@@ -84,7 +84,7 @@ impl TokenContract {
         Self::_require_admin(&env);
         assert!(amount > 0, "amount must be positive");
         Self::_mint(&env, &to, amount);
-        
+
         // Extend TTL for the balance key to prevent archiving
         let ttl_ledgers = 52 * 7 * 24 * 60 / 5; // ~52 weeks (assuming 5-second ledgers)
         let key = DataKey::Balance(to);
@@ -209,7 +209,7 @@ impl TokenContract {
         assert!(!Self::_is_frozen(&env, &from), "account is frozen");
 
         Self::_transfer(&env, &from, &to, amount);
-        
+
         // Extend TTL for both balance keys to prevent archiving
         // Use a standard TTL extension (e.g., 52 weeks in ledgers)
         let ttl_ledgers = 52 * 7 * 24 * 60 / 5; // ~52 weeks (assuming 5-second ledgers)
@@ -238,7 +238,7 @@ impl TokenContract {
 
         let key = DataKey::Allowance(from.clone(), spender.clone());
         env.storage().persistent().set(&key, &amount);
-        
+
         // Extend TTL for the allowance key
         // If expiration_ledger is 0 or in the past, use default TTL (52 weeks)
         let current_ledger = env.ledger().sequence();
@@ -248,7 +248,7 @@ impl TokenContract {
             // Default TTL: 52 weeks in ledgers (assuming 5-second ledgers)
             52 * 7 * 24 * 60 / 5
         };
-        
+
         env.storage()
             .persistent()
             .extend_ttl(&key, ttl_ledgers, ttl_ledgers);
@@ -271,7 +271,7 @@ impl TokenContract {
         env.storage().persistent().set(&key, &(allowance - amount));
 
         Self::_transfer(&env, &from, &to, amount);
-        
+
         // Extend TTL for balance keys to prevent archiving
         let ttl_ledgers = 52 * 7 * 24 * 60 / 5; // ~52 weeks (assuming 5-second ledgers)
         let from_key = DataKey::Balance(from);
