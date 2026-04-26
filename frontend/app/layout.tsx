@@ -6,6 +6,8 @@ import { SettingsProvider } from "./providers/SettingsProvider";
 import { NetworkProvider } from "./providers/NetworkProvider";
 import { AccessibilityProvider } from "./providers/AccessibilityProvider";
 import { I18nProvider } from "./providers/I18nProvider";
+import { ToastProvider } from "./providers/ToastProvider";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Navbar } from "./components/Navbar";
 import { MainnetWarning } from "./components/MainnetWarning";
 import messages from "../messages/en.json";
@@ -47,38 +49,40 @@ export default function RootLayout({
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
-        <I18nProvider locale="en" messages={messages}>
-          <NetworkProvider>
-            <SettingsProvider>
-              <WalletProvider>
-                <AccessibilityProvider>
-                  <Navbar />
-                  <MainnetWarning />
-                  <main id="main-content" className="pt-16" role="main">
-                    {children}
-                  </main>
-                  <footer
-                    role="contentinfo"
-                    className="border-t border-white/5 py-8 text-center text-sm text-gray-500"
-                  >
-                    <p>
-                      Built for the{" "}
-                      <a
-                        href="https://www.drips.network/wave"
-                        className="text-stellar-400 hover:underline"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Stellar Wave Program
-                      </a>{" "}
-                      · MIT License
-                    </p>
-                  </footer>
-                </AccessibilityProvider>
-              </WalletProvider>
-            </SettingsProvider>
-          </NetworkProvider>
-        </I18nProvider>
+        <ToastProvider>
+          <I18nProvider locale="en" messages={messages}>
+            <NetworkProvider>
+              <SettingsProvider>
+                <WalletProvider>
+                  <AccessibilityProvider>
+                    <Navbar />
+                    <MainnetWarning />
+                    <main id="main-content" className="pt-16" role="main">
+                      <ErrorBoundary>{children}</ErrorBoundary>
+                    </main>
+                    <footer
+                      role="contentinfo"
+                      className="border-t border-white/5 py-8 text-center text-sm text-gray-500"
+                    >
+                      <p>
+                        Built for the{" "}
+                        <a
+                          href="https://www.drips.network/wave"
+                          className="text-stellar-400 hover:underline"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Stellar Wave Program
+                        </a>{" "}
+                        · MIT License
+                      </p>
+                    </footer>
+                  </AccessibilityProvider>
+                </WalletProvider>
+              </SettingsProvider>
+            </NetworkProvider>
+          </I18nProvider>
+        </ToastProvider>
       </body>
     </html>
   );

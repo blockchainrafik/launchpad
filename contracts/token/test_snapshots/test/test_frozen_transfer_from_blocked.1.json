@@ -945,7 +945,7 @@
             "data": {
               "vec": [
                 {
-                  "string": "caught panic 'account is frozen' from contract function 'Symbol(obj#155)'"
+                  "string": "caught panic 'account is frozen' from contract function 'Symbol(obj#157)'"
                 },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
