@@ -12,6 +12,7 @@ export interface PreflightCheckResult {
     cost: string;
     footprint: string;
   };
+  estimatedFee?: string;
 }
 
 /**
@@ -312,8 +313,9 @@ export async function simulateTokenDeployment(
     // Horizon is the authoritative source for account existence; an
     // account that hasn't been funded cannot be a valid admin.
     const horizon = new StellarSdk.Horizon.Server(config.horizonUrl);
+    let sourceAccount;
     try {
-      await horizon.loadAccount(adminAddress);
+      sourceAccount = await horizon.loadAccount(adminAddress);
     } catch {
       return {
         success: false,
@@ -344,10 +346,9 @@ export async function simulateTokenDeployment(
       StellarSdk.nativeToScVal(authorizationRevocable, { type: "bool" }),
     ];
 
-    const account = new StellarSdk.Account(adminAddress, "0");
     const contract = new StellarSdk.Contract(PLACEHOLDER_CONTRACT_ID);
-    const tx = new StellarSdk.TransactionBuilder(account, {
-      fee: "100",
+    const tx = new StellarSdk.TransactionBuilder(sourceAccount, {
+      fee: StellarSdk.BASE_FEE,
       networkPassphrase: config.passphrase,
     })
       .addOperation(contract.call("initialize", ...args))
@@ -356,27 +357,41 @@ export async function simulateTokenDeployment(
 
     const sim = await rpc.simulateTransaction(tx);
 
+    let estimatedFee = "0.01";
+    
+    if (StellarSdk.rpc.Api.isSimulationSuccess(sim)) {
+      try {
+        const minResourceFee = Number(sim.minResourceFee || "0");
+        const baseFee = Number(StellarSdk.BASE_FEE);
+        const totalFee = (minResourceFee + baseFee) / 10_000_000;
+        estimatedFee = totalFee.toFixed(7);
+      } catch {
+        estimatedFee = "0.01";
+      }
+    }
+
     // "Contract not found" is the expected outcome for a not-yet-deployed
     // token – it means connectivity and argument encoding are both fine.
     if (StellarSdk.rpc.Api.isSimulationError(sim)) {
       if (isExpectedPreflightError(sim.error)) {
-        return { success: true, warnings: [], errors: [] };
+        return { success: true, warnings: [], errors: [], estimatedFee };
       }
       const friendlyError = parseSorobanError(sim.error);
-      return { success: false, warnings: [], errors: [friendlyError] };
+      return { success: false, warnings: [], errors: [friendlyError], estimatedFee };
     }
 
     // An unexpected success (shouldn't happen with placeholder) is fine too.
-    return { success: true, warnings: [], errors: [] };
+    return { success: true, warnings: [], errors: [], estimatedFee };
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     if (isExpectedPreflightError(msg)) {
-      return { success: true, warnings: [], errors: [] };
+      return { success: true, warnings: [], errors: [], estimatedFee: "0.01" };
     }
     return {
       success: false,
       warnings: [],
       errors: [parseSorobanError(msg)],
+      estimatedFee: "0.01",
     };
   }
 }
