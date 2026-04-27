@@ -29,9 +29,9 @@ export const StepSupply = ({ register, errors }: StepProps) => {
                 label="Maximum Supply (Optional)"
                 type="number"
                 placeholder="Leave empty for unlimited"
-                {...register("maxSupply", { 
-                    valueAsNumber: true,
-                    setValueAs: (v) => v === "" ? undefined : Number(v)
+                {...register("maxSupply", {
+                    setValueAs: (v: unknown) =>
+                        v === "" || v === null || v === undefined ? undefined : Number(v),
                 })}
                 error={errors.maxSupply?.message as string}
             />

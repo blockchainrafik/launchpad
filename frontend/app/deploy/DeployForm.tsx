@@ -18,13 +18,20 @@ import { trackDeployment } from "@/lib/deployments";
 import { ArrowLeft, ArrowRight, Rocket } from "lucide-react";
 import { useNetwork } from "@/app/providers/NetworkProvider";
 
+const optionalNumber = (schema: z.ZodNumber) =>
+  z.preprocess((value) => {
+    if (value === "" || value === null || value === undefined) return undefined;
+    if (typeof value === "number" && Number.isNaN(value)) return undefined;
+    return Number(value);
+  }, schema.optional());
+
 const deploySchema = z
   .object({
     name: z.string().min(1, "Token name is required").max(32, "Name too long"),
     symbol: z.string().min(1, "Symbol is required").max(12, "Symbol too long"),
     decimals: z.number().min(0).max(14),
     initialSupply: z.number().min(1, "Initial supply must be at least 1"),
-    maxSupply: z.number().min(1, "Max supply must be at least 1").optional(),
+    maxSupply: optionalNumber(z.number().min(1, "Max supply must be at least 1")),
     adminAddress: z
       .string()
       .regex(/^G[A-Z2-7]{55}$/, "Invalid Stellar public key"),
