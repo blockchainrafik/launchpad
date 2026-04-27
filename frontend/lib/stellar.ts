@@ -1,6 +1,6 @@
 import * as StellarSdk from "@stellar/stellar-sdk";
 import { type NetworkConfig } from "../types/network";
-import { fetchIndexedEvents, getMercuryConfig } from "./indexer";
+import { fetchIndexedEvents } from "./indexer";
 import { wrapRpcCall } from "./soroban";
 
 // ---------------------------------------------------------------------------

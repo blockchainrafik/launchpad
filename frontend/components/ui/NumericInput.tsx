@@ -11,27 +11,27 @@ interface NumericInputProps
   allowDecimals?: boolean;
 }
 
+const format = (val: string): string => {
+  if (!val) return "";
+  // Split on decimal point
+  const [integer, decimal] = val.split(".");
+  // Add thousand separators to integer part
+  const formatted = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return decimal !== undefined ? `${formatted}.${decimal}` : formatted;
+};
+
+const toDisplay = (val: number | string | undefined): string => {
+  if (val === undefined || val === "") return "";
+  const str = String(val);
+  return format(str);
+};
+
 /**
  * NumericInput formats numbers with thousand separators (e.g. 1,000,000)
  * while stripping leading zeros and commas from the underlying parsed value.
  */
 export const NumericInput = React.forwardRef<HTMLInputElement, NumericInputProps>(
   ({ label, error, value, onChange, allowDecimals = true, className = "", ...props }, ref) => {
-    const format = (val: string): string => {
-      if (!val) return "";
-      // Split on decimal point
-      const [integer, decimal] = val.split(".");
-      // Add thousand separators to integer part
-      const formatted = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-      return decimal !== undefined ? `${formatted}.${decimal}` : formatted;
-    };
-
-    const toDisplay = (val: number | string | undefined): string => {
-      if (val === undefined || val === "") return "";
-      const str = String(val);
-      return format(str);
-    };
-
     const [displayValue, setDisplayValue] = useState<string>(toDisplay(value));
 
     React.useEffect(() => {

@@ -5,7 +5,6 @@ import {
   useContext,
   useState,
   useEffect,
-  useSyncExternalStore,
   ReactNode,
 } from "react";
 import { AbstractIntlMessages } from "next-intl";
@@ -69,6 +68,7 @@ export function LocaleProvider({ children }: LocaleProviderProps) {
 
   useEffect(() => {
     const initialLocale = getInitialLocale();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocaleState(initialLocale);
     loadMessages(initialLocale).then((msgs) => {
       setMessages(msgs);

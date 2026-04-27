@@ -1,13 +1,15 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Rocket, Search } from "lucide-react";
+import { Search } from "lucide-react";
 
 // Mock next/link
 jest.mock("next/link", () => {
-  return ({ children, href }: { children: React.ReactNode; href: string }) => {
+  const MockLink = ({ children, href }: { children: React.ReactNode; href: string }) => {
     return <a href={href}>{children}</a>;
   };
+  MockLink.displayName = "MockLink";
+  return MockLink;
 });
 
 describe("EmptyState", () => {

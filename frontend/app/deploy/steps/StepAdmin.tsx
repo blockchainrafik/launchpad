@@ -1,6 +1,6 @@
 "use client";
 
-import { UseFormRegister, FieldErrors, useWatch, Control, useController } from "react-hook-form";
+import { UseFormRegister, FieldErrors, Control, useController } from "react-hook-form";
 import { useState } from "react";
 import { Input } from "@/components/ui/Input";
 import { DeployFormData } from "../DeployForm";
@@ -136,7 +136,7 @@ export const StepAdmin = ({ register, errors, control }: StepProps) => {
 
                         {!authRequired && (
                             <p className="text-xs text-gray-600 italic mt-1">
-                                Enable "Authorization Required" to use "Authorization Revocable".
+                                Enable &quot;Authorization Required&quot; to use &quot;Authorization Revocable&quot;.
                             </p>
                         )}
                     </div>

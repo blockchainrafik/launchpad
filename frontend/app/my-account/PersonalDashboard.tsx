@@ -5,7 +5,6 @@ import {
   AlertCircle,
   Flame,
   CheckCircle2,
-  Rocket,
   Plus,
   Trash2,
   ExternalLink,
@@ -108,7 +107,7 @@ export default function PersonalDashboard() {
       });
       setImportContractId("");
       loadTrackedTokens();
-    } catch (err) {
+    } catch {
       setImportError("Could not find token. Check the contract ID.");
     } finally {
       setImportLoading(false);

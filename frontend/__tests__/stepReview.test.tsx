@@ -32,7 +32,8 @@ jest.mock("@stellar/stellar-sdk", () => ({
 
 describe("StepReview", () => {
   const mockConnect = jest.fn();
-  const mockControl = {} as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mockControl: any = {};
 
   beforeEach(() => {
     jest.clearAllMocks();
