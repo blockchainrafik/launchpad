@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import type { Resolver } from "react-hook-form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -79,7 +80,7 @@ export default function DeployForm() {
     formState: { errors, isValid },
     watch,
   } = useForm<DeployFormData>({
-    resolver: zodResolver(deploySchema),
+    resolver: zodResolver(deploySchema) as unknown as Resolver<DeployFormData>,
     mode: "onChange",
     defaultValues: {
       decimals: 7,
