@@ -16,7 +16,7 @@ Usage:
     --max-supply 10000000
 
 Flags:
-  --network      Soroban network (testnet | mainnet | futurenet)  [required]
+  --network      Soroban network (local | testnet | mainnet | futurenet)  [required]
   --admin        Stellar secret key or identity name               [required]
   --name         Token name                                        [required]
   --symbol       Token symbol                                      [required]
@@ -61,8 +61,10 @@ function validate(args: Record<string, string>): void {
     }
   }
 
-  if (!["testnet", "mainnet", "futurenet"].includes(args.network)) {
-    console.error("Error: --network must be testnet, mainnet, or futurenet.");
+  if (!["local", "testnet", "mainnet", "futurenet"].includes(args.network)) {
+    console.error(
+      "Error: --network must be local, testnet, mainnet, or futurenet.",
+    );
     process.exit(1);
   }
 
@@ -175,6 +177,28 @@ function main(): void {
 
   writeFileSync(envPath, envContent);
   console.log(`Written CONTRACT_ID to .env.local`);
+
+  // Step 6 — Generate TypeScript bindings
+  console.log("\n=== Step 6/6: Generating TypeScript bindings ===\n");
+  const tokenOutDir = resolve(rootDir, "frontend/lib/contracts/token");
+  exec(
+    `soroban contract bindings typescript --id ${contractId} --network ${network} --output-dir "${tokenOutDir}" --overwrite`,
+    rootDir,
+  );
+  console.log(`Token bindings generated in ${tokenOutDir}`);
+
+  // Also generate vesting bindings if VESTING_CONTRACT_ID is present in .env.local
+  if (/^VESTING_CONTRACT_ID=.*/m.test(envContent)) {
+    const vestingId = envContent.match(/^VESTING_CONTRACT_ID=(.*)/m)?.[1];
+    if (vestingId) {
+      const vestingOutDir = resolve(rootDir, "frontend/lib/contracts/vesting");
+      exec(
+        `soroban contract bindings typescript --id ${vestingId} --network ${network} --output-dir "${vestingOutDir}" --overwrite`,
+        rootDir,
+      );
+      console.log(`Vesting bindings generated in ${vestingOutDir}`);
+    }
+  }
 
   // Summary
   console.log("\n=== Deployment complete ===");

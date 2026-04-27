@@ -1,0 +1,106 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Pre-flight Check Snapshots matches error display snapshot 1`] = `
+<div>
+  <div
+    class="rounded-xl border border-red-500/30 bg-red-500/10 p-4"
+  >
+    <div
+      class="flex items-start gap-3"
+    >
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-circle-alert h-5 w-5 mt-0.5 flex-shrink-0 text-red-400"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <circle
+          cx="12"
+          cy="12"
+          r="10"
+        />
+        <line
+          x1="12"
+          x2="12"
+          y1="8"
+          y2="12"
+        />
+        <line
+          x1="12"
+          x2="12.01"
+          y1="16"
+          y2="16"
+        />
+      </svg>
+      <div
+        class="flex-1"
+      >
+        <h3
+          class="font-semibold text-red-300 mb-2"
+        >
+          Cannot proceed with transaction
+        </h3>
+        <ul
+          class="space-y-1"
+        >
+          <li
+            class="text-sm text-red-200"
+          >
+            • 
+            Insufficient balance
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Pre-flight Check Snapshots matches success display snapshot 1`] = `
+<div>
+  <div
+    class="rounded-xl border border-green-500/30 bg-green-500/10 p-4"
+  >
+    <div
+      class="flex items-center gap-3"
+    >
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-circle-check-big h-5 w-5 flex-shrink-0 text-green-400"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M21.801 10A10 10 0 1 1 17 3.335"
+        />
+        <path
+          d="m9 11 3 3L22 4"
+        />
+      </svg>
+      <div
+        class="flex-1"
+      >
+        <p
+          class="text-sm text-green-200"
+        >
+          Ready to sign
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+`;

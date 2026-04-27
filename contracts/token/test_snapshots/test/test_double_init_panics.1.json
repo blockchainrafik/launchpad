@@ -104,6 +104,30 @@
                         "key": {
                           "vec": [
                             {
+                              "symbol": "AuthorizationRequired"
+                            }
+                          ]
+                        },
+                        "val": {
+                          "bool": false
+                        }
+                      },
+                      {
+                        "key": {
+                          "vec": [
+                            {
+                              "symbol": "AuthorizationRevocable"
+                            }
+                          ]
+                        },
+                        "val": {
+                          "bool": false
+                        }
+                      },
+                      {
+                        "key": {
+                          "vec": [
+                            {
                               "symbol": "Decimals"
                             }
                           ]
@@ -134,6 +158,21 @@
                         },
                         "val": {
                           "string": "TST"
+                        }
+                      },
+                      {
+                        "key": {
+                          "vec": [
+                            {
+                              "symbol": "TotalBurned"
+                            }
+                          ]
+                        },
+                        "val": {
+                          "i128": {
+                            "hi": 0,
+                            "lo": 0
+                          }
                         }
                       },
                       {
@@ -222,6 +261,13 @@
                     "hi": 0,
                     "lo": 10000000000000
                   }
+                },
+                "void",
+                {
+                  "bool": false
+                },
+                {
+                  "bool": false
                 }
               ]
             }
@@ -250,6 +296,26 @@
                 "hi": 0,
                 "lo": 10000000000000
               }
+            }
+          }
+        }
+      },
+      "failed_call": false
+    },
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
+        "type_": "contract",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "init"
+              }
+            ],
+            "data": {
+              "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
             }
           }
         }
@@ -314,6 +380,13 @@
                     "hi": 0,
                     "lo": 0
                   }
+                },
+                "void",
+                {
+                  "bool": false
+                },
+                {
+                  "bool": false
                 }
               ]
             }
@@ -337,7 +410,7 @@
             "data": {
               "vec": [
                 {
-                  "string": "caught panic 'already initialized' from contract function 'Symbol(obj#53)'"
+                  "string": "caught panic 'already initialized' from contract function 'Symbol(obj#75)'"
                 },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
@@ -356,6 +429,13 @@
                     "hi": 0,
                     "lo": 0
                   }
+                },
+                "void",
+                {
+                  "bool": false
+                },
+                {
+                  "bool": false
                 }
               ]
             }
@@ -433,6 +513,13 @@
                         "hi": 0,
                         "lo": 0
                       }
+                    },
+                    "void",
+                    {
+                      "bool": false
+                    },
+                    {
+                      "bool": false
                     }
                   ]
                 }

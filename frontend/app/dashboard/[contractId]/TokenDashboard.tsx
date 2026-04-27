@@ -1,209 +1,45 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
-import { ArrowUpDown, AlertCircle, Loader2 } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Download } from "lucide-react";
 import {
-  fetchTokenInfo,
-  fetchTopHolders,
   truncateAddress,
   type TokenInfo,
   type TokenHolder,
+  type SupplyBreakdown,
 } from "@/lib/stellar";
+import { useSoroban } from "@/hooks/useSoroban";
 import VestingProgress from "./VestingProgress";
-import { CopyButton } from "@/components/ui/CopyButton";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-type SortField = "address" | "balance" | "sharePercent";
-type SortDir = "asc" | "desc";
-
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
-
-function InfoCard({ label, value, copyValue }: { label: string; value: string; copyValue?: string }) {
-  return (
-    <div className="glass-card flex flex-col gap-1 p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wider text-gray-500">
-          {label}
-        </span>
-        {copyValue && copyValue !== "N/A" && (
-          <CopyButton value={copyValue} label={`Copy ${label}`} className="ml-1" />
-        )}
-      </div>
-      <span className="truncate text-lg font-semibold text-white">
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function LoadingState() {
-  return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4">
-      <Loader2 className="h-8 w-8 animate-spin text-stellar-400" />
-      <p className="text-sm text-gray-400">Fetching token data...</p>
-    </div>
-  );
-}
-
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-      <AlertCircle className="h-10 w-10 text-red-400" />
-      <p className="max-w-md text-gray-400">{message}</p>
-      <button
-        onClick={onRetry}
-        className="btn-secondary px-4 py-2 text-sm"
-      >
-        Retry
-      </button>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Holders table
-// ---------------------------------------------------------------------------
-
-function HoldersTable({ holders }: { holders: TokenHolder[] }) {
-  const [sortField, setSortField] = useState<SortField>("balance");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-
-  const toggleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortField(field);
-      setSortDir("desc");
-    }
-  };
-
-  const sorted = useMemo(() => {
-    return [...holders].sort((a, b) => {
-      let cmp = 0;
-      switch (sortField) {
-        case "address":
-          cmp = a.address.localeCompare(b.address);
-          break;
-        case "balance":
-          cmp = parseFloat(a.balance) - parseFloat(b.balance);
-          break;
-        case "sharePercent":
-          cmp = a.sharePercent - b.sharePercent;
-          break;
-      }
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-  }, [holders, sortField, sortDir]);
-
-  if (holders.length === 0) {
-    return (
-      <div className="glass-card p-8 text-center text-gray-500">
-        <p>No holder data available.</p>
-        <p className="mt-1 text-xs">
-          Soroban-native tokens require an indexer for full holder enumeration.
-        </p>
-      </div>
-    );
-  }
-
-  const thClass =
-    "px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 cursor-pointer select-none hover:text-gray-300 transition-colors";
-
-  return (
-    <div className="glass-card overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm" role="table">
-          <thead>
-            <tr className="border-b border-white/5">
-              <th
-                className={thClass}
-                onClick={() => toggleSort("address")}
-                aria-sort={sortField === "address" ? sortDir === "asc" ? "ascending" : "descending" : "none"}
-              >
-                <span className="inline-flex items-center gap-1">
-                  Address
-                  <ArrowUpDown className="h-3 w-3" />
-                </span>
-              </th>
-              <th
-                className={`${thClass} text-right`}
-                onClick={() => toggleSort("balance")}
-                aria-sort={sortField === "balance" ? sortDir === "asc" ? "ascending" : "descending" : "none"}
-              >
-                <span className="inline-flex items-center justify-end gap-1">
-                  Balance
-                  <ArrowUpDown className="h-3 w-3" />
-                </span>
-              </th>
-              <th
-                className={`${thClass} text-right`}
-                onClick={() => toggleSort("sharePercent")}
-                aria-sort={sortField === "sharePercent" ? sortDir === "asc" ? "ascending" : "descending" : "none"}
-              >
-                <span className="inline-flex items-center justify-end gap-1">
-                  % Share
-                  <ArrowUpDown className="h-3 w-3" />
-                </span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((holder, i) => (
-              <tr
-                key={holder.address}
-                className={`border-b border-white/5 transition-colors hover:bg-white/[0.02] ${i % 2 === 0 ? "bg-white/[0.01]" : ""
-                  }`}
-              >
-                <td className="px-4 py-3 font-mono text-xs text-stellar-300">
-                  <div className="flex items-center gap-2">
-                    <span className="hidden sm:inline">{holder.address}</span>
-                    <span className="sm:hidden">{truncateAddress(holder.address, 6)}</span>
-                    <CopyButton value={holder.address} label="Copy wallet address" />
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-right font-mono text-white">
-                  {holder.balance}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-void-700 sm:block">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-stellar-500 to-stellar-400"
-                        style={{ width: `${Math.min(holder.sharePercent, 100)}%` }}
-                      />
-                    </div>
-                    <span className="font-mono text-gray-300">
-                      {holder.sharePercent.toFixed(2)}%
-                    </span>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
+import TransactionHistory from "./TransactionHistory";
+import SupplyBreakdownChart from "@/components/charts/SupplyBreakdownChart";
+import { ExplorerLink } from "@/components/ui/ExplorerLink";
+import ActivityFeed from "./ActivityFeed";
+import { TransferPanel } from "./components/TransferPanel";
+import { UserPanel } from "./components/UserPanel";
+import { AdminPanel } from "./components/AdminPanel";
+import { useWallet } from "@/app/hooks/useWallet";
+import { HoldersTable, exportHoldersCsv } from "./components/HoldersTable";
+import { InfoCard } from "./components/InfoCard";
+import { ErrorState, LoadingState } from "./components/DashboardUi";
 
 // ---------------------------------------------------------------------------
 // Main dashboard component
 // ---------------------------------------------------------------------------
 
-export default function TokenDashboard({
-  contractId,
-}: {
-  contractId: string;
-}) {
+export default function TokenDashboard({ contractId }: { contractId: string }) {
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
   const [holders, setHolders] = useState<TokenHolder[]>([]);
+  const [supplyBreakdown, setSupplyBreakdown] =
+    useState<SupplyBreakdown | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { publicKey } = useWallet();
+  const {
+    fetchTokenInfo,
+    fetchTopHolders,
+    fetchSupplyBreakdown,
+  } = useSoroban();
+  console.log(tokenInfo);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -216,16 +52,25 @@ export default function TokenDashboard({
       // Attempt to load holders (best-effort for classic-wrapped assets)
       const holderData = await fetchTopHolders(contractId);
       setHolders(holderData);
+
+      // Fetch supply breakdown
+      try {
+        const breakdown = await fetchSupplyBreakdown(contractId);
+        setSupplyBreakdown(breakdown);
+      } catch (supplyError) {
+        console.error("Failed to fetch supply breakdown", supplyError);
+        // Non-fatal for the dashboard – chart will simply be hidden.
+      }
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to fetch token data. Please check the contract ID and try again."
+          : "Failed to fetch token data. Please check the contract ID and try again.",
       );
     } finally {
       setLoading(false);
     }
-  }, [contractId]);
+  }, [contractId, fetchTokenInfo, fetchTopHolders, fetchSupplyBreakdown]);
 
   useEffect(() => {
     loadData();
@@ -244,11 +89,14 @@ export default function TokenDashboard({
           <span className="text-stellar-400">({tokenInfo.symbol})</span>
         </h1>
         <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-400">
-          <span className="font-mono text-xs">
-            <span className="hidden md:inline">{contractId}</span>
-            <span className="md:hidden">{truncateAddress(contractId, 8)}</span>
-          </span>
-          <CopyButton value={contractId} label="Copy contract ID" />
+          <span className="text-xs text-gray-500">Contract ID:</span>
+          <ExplorerLink
+            type="contract"
+            identifier={contractId}
+            truncate={true}
+            truncateChars={8}
+            showCopy={true}
+          />
         </div>
       </div>
 
@@ -267,15 +115,55 @@ export default function TokenDashboard({
             label="Admin"
             value={truncateAddress(tokenInfo.admin)}
             copyValue={tokenInfo.admin}
+            isAddress={true}
           />
         </div>
       </section>
 
+      {/* User Actions Panel (Burn Tokens) */}
+      <UserPanel contractId={contractId} decimals={tokenInfo.decimals} />
+
+      {/* Admin Panel (Mint, Burn, Vesting, Transfer Admin) */}
+      {publicKey && tokenInfo.admin === publicKey && (
+        <AdminPanel
+          contractId={contractId}
+          maxSupply={tokenInfo.maxSupply}
+          totalSupply={tokenInfo.totalSupply}
+        />
+      )}
+
+      {/* Supply Breakdown Chart */}
+      {supplyBreakdown && (
+        <section aria-label="Supply breakdown" className="mb-10">
+          <SupplyBreakdownChart
+            data={{
+              circulating: supplyBreakdown.circulating,
+              locked: supplyBreakdown.locked,
+              burned: supplyBreakdown.burned,
+              total: supplyBreakdown.total,
+            }}
+            symbol={tokenInfo.symbol}
+            decimals={tokenInfo.decimals}
+          />
+        </section>
+      )}
+
       {/* Top holders */}
       <section aria-label="Top holders">
-        <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-gray-500">
-          Top Holders
-        </h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-medium uppercase tracking-wider text-gray-500">
+            Top Holders
+          </h2>
+          {holders.length > 0 && (
+            <button
+              onClick={() => exportHoldersCsv(holders)}
+              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-gray-300 transition-colors hover:border-stellar-400/30 hover:bg-stellar-500/10 hover:text-stellar-300"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export CSV
+            </button>
+          )}
+        </div>
         <HoldersTable holders={holders} />
       </section>
 
@@ -286,6 +174,33 @@ export default function TokenDashboard({
         </h2>
         <VestingProgress decimals={tokenInfo.decimals} />
       </section>
+
+      {/* Transaction History */}
+      <section
+        aria-label="Transaction history"
+        className="mt-16 border-t border-white/5 pt-10"
+      >
+        <TransactionHistory
+          contractId={contractId}
+          decimals={tokenInfo.decimals}
+          symbol={tokenInfo.symbol}
+        />
+      </section>
+
+      {/* Token Activity Feed */}
+      <section aria-label="Token activity feed" className="mt-10">
+        <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-gray-500">
+          Token Activity
+        </h2>
+        <ActivityFeed accountId={contractId} />
+      </section>
+
+      {/* Transfer Tokens Panel */}
+      <TransferPanel
+        contractId={contractId}
+        tokenSymbol={tokenInfo.symbol}
+        tokenDecimals={tokenInfo.decimals}
+      />
     </div>
   );
 }

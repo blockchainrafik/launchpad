@@ -69,6 +69,8 @@ fn setup_env() -> (Env, TokenContractClient<'static>, Address, Address, Address)
         &String::from_str(&env, "FZT"),
         &INITIAL_SUPPLY,
         &None,
+        &false,
+        &false,
     );
 
     (env, client, admin, user1, user2)
@@ -95,6 +97,8 @@ fn setup_capped_env(
         &String::from_str(&env, "CFZ"),
         &initial,
         &Some(cap),
+        &false,
+        &false,
     );
 
     (env, client, admin, user)
@@ -114,10 +118,7 @@ fn assert_supply_invariant(client: &TokenContractClient, accounts: &[&Address]) 
 fn assert_non_negative_balances(client: &TokenContractClient, accounts: &[&Address]) {
     for acct in accounts {
         let bal = client.balance(acct);
-        assert!(
-            bal >= 0,
-            "INVARIANT VIOLATED: negative balance {bal}"
-        );
+        assert!(bal >= 0, "INVARIANT VIOLATED: negative balance {bal}");
     }
 }
 
@@ -184,11 +185,13 @@ proptest! {
         let (_, client, admin, _, _) = setup_env();
         let supply_before = client.total_supply();
         let bal_before    = client.balance(&admin);
+        let burned_before = client.total_burned();
 
         client.burn(&admin, &amount);
 
         prop_assert_eq!(client.balance(&admin), bal_before - amount);
         prop_assert_eq!(client.total_supply(), supply_before - amount);
+        prop_assert_eq!(client.total_burned(), burned_before + amount);
         assert_supply_invariant(&client, &[&admin]);
         assert_non_negative_balances(&client, &[&admin]);
     }
@@ -199,12 +202,14 @@ proptest! {
         let (_, client, admin, _, _) = setup_env();
         let supply_before = client.total_supply();
         let bal_before    = client.balance(&admin);
+        let burned_before = client.total_burned();
 
         client.burn(&admin, &amount);
         client.mint(&admin, &amount);
 
         prop_assert_eq!(client.balance(&admin), bal_before);
         prop_assert_eq!(client.total_supply(), supply_before);
+        prop_assert_eq!(client.total_burned(), burned_before + amount);
     }
 
     // ── Transfer ────────────────────────────────────────────────────────
@@ -387,7 +392,7 @@ fn test_mint_i128_overflow() {
     let id = env.register_contract(None, TokenContract);
     let client = TokenContractClient::new(&env, &id);
     let admin = Address::generate(&env);
-    let user  = Address::generate(&env);
+    let user = Address::generate(&env);
 
     // Start near i128::MAX so the next mint overflows total_supply.
     client.initialize(
@@ -397,6 +402,8 @@ fn test_mint_i128_overflow() {
         &String::from_str(&env, "OVF"),
         &(i128::MAX - 1),
         &None,
+        &false,
+        &false,
     );
 
     // total_supply is (i128::MAX − 1); minting 2 overflows.
@@ -423,7 +430,7 @@ fn test_transfer_underflow_rejected() {
 #[should_panic(expected = "mint would exceed max_supply")]
 fn test_mint_exceeds_max_supply_rejected() {
     let initial = 500_0000000i128;
-    let cap     = 1_000_0000000i128;
+    let cap = 1_000_0000000i128;
     let (_, client, _, user) = setup_capped_env(initial, cap);
 
     // Remaining capacity is 500_0000000 — minting 1 more overflows the cap.
