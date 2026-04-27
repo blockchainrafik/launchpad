@@ -5,6 +5,7 @@ import { useNetwork } from "@/app/providers/NetworkProvider";
 import * as StellarSdk from "@stellar/stellar-sdk";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { Wallet } from "lucide-react";
 
 interface StepProps {
     control: Control<DeployFormData>;
@@ -21,6 +22,7 @@ const SummaryItem = ({ label, value }: { label: string; value: string | number |
 
 export const StepReview = ({ control }: StepProps) => {
     const formData = useWatch({ control });
+    const { publicKey, connect } = useWallet();
 
     return (
         <div className="space-y-6 animate-fade-in-up">
@@ -52,6 +54,26 @@ export const StepReview = ({ control }: StepProps) => {
                 By deploying, you will initiate a transaction on the Stellar network. 
                 Resource fees will be calculated during the pre-flight check.
             </p>
+
+            {!publicKey && (
+                <div className="p-6 rounded-xl bg-stellar-500/5 border border-stellar-500/20 text-center space-y-4 animate-pulse-subtle">
+                    <div className="flex justify-center">
+                        <div className="p-3 rounded-full bg-stellar-500/10">
+                            <Wallet className="w-6 h-6 text-stellar-400" />
+                        </div>
+                    </div>
+                    <div>
+                        <h4 className="text-white font-bold">Wallet Disconnected</h4>
+                        <p className="text-sm text-gray-400">Connect your wallet to finalize deployment.</p>
+                    </div>
+                    <Button 
+                        onClick={connect}
+                        className="w-full bg-stellar-500 hover:bg-stellar-600 text-white font-bold py-3 shadow-lg shadow-stellar-500/20"
+                    >
+                        Connect Wallet to Deploy
+                    </Button>
+                </div>
+            )}
         </div>
     );
 };
