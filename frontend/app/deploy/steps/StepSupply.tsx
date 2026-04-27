@@ -1,13 +1,13 @@
-import { UseFormRegister, FieldErrors } from "react-hook-form";
-import { Input } from "@/components/ui/Input";
+import { FieldErrors, Controller, Control } from "react-hook-form";
+import { NumericInput } from "@/components/ui/NumericInput";
 import { DeployFormData } from "../DeployForm";
 
 interface StepProps {
-    register: UseFormRegister<DeployFormData>;
+    control: Control<DeployFormData>;
     errors: FieldErrors<DeployFormData>;
 }
 
-export const StepSupply = ({ register, errors }: StepProps) => {
+export const StepSupply = ({ control, errors }: StepProps) => {
     return (
         <div className="space-y-6 animate-fade-in-up">
             <div className="text-left">
@@ -17,12 +17,18 @@ export const StepSupply = ({ register, errors }: StepProps) => {
                 </p>
             </div>
 
-            <Input
-                label="Initial Supply"
-                type="number"
-                placeholder="e.g. 1000000"
-                {...register("initialSupply", { valueAsNumber: true })}
-                error={errors.initialSupply?.message as string}
+            <Controller
+                name="initialSupply"
+                control={control}
+                render={({ field }) => (
+                    <NumericInput
+                        label="Initial Supply"
+                        placeholder="e.g. 1,000,000"
+                        value={field.value}
+                        onChange={field.onChange}
+                        error={errors.initialSupply?.message as string}
+                    />
+                )}
             />
 
             <Input

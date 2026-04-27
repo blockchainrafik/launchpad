@@ -6,6 +6,7 @@ import { Loader2, TrendingUp, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import type { RecentToken } from "@/lib/recentTokens";
 import { truncateAddress } from "@/lib/stellar";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 function timeAgo(iso: string): string {
   if (!iso) return "";
@@ -68,14 +69,12 @@ export function RecentLaunches() {
       )}
 
       {!loading && !error && tokens.length === 0 && (
-        <div className="text-center">
-          <p className="text-gray-500">
-            No tokens launched recently. Be the first!
-          </p>
-          <Link href="/deploy" className="btn-primary mt-4 inline-block px-6 py-2 text-sm">
-            Deploy a Token
-          </Link>
-        </div>
+        <EmptyState 
+          title="No tokens launched recently"
+          description="Be the first to launch a token on the network! It's fast, secure, and ready for your project."
+          actionLabel="Deploy a Token"
+          actionHref="/deploy"
+        />
       )}
 
       {!loading && !error && tokens.length > 0 && (

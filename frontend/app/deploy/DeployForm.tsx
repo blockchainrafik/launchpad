@@ -35,6 +35,9 @@ const deploySchema = z
     adminAddress: z
       .string()
       .regex(/^G[A-Z2-7]{55}$/, "Invalid Stellar public key"),
+    // Authorization flags
+    authorizationRequired: z.boolean(),
+    authorizationRevocable: z.boolean(),
     // Optional metadata fields
     description: z.string().optional(),
     logoUrl: z.string().optional(),
@@ -83,6 +86,8 @@ export default function DeployForm() {
       name: "",
       symbol: "",
       adminAddress: "",
+      authorizationRequired: false,
+      authorizationRevocable: false,
       description: "",
       logoUrl: "",
       website: "",
@@ -218,10 +223,10 @@ export default function DeployForm() {
             <StepMetadata register={register} errors={errors} />
           )}
           {currentStep === 2 && (
-            <StepSupply register={register} errors={errors} />
-          )}
+  <StepSupply control={control} errors={errors} />
+)}
           {currentStep === 3 && (
-            <StepAdmin register={register} errors={errors} />
+            <StepAdmin register={register} errors={errors} control={control} />
           )}
           {currentStep === 4 && <StepReview control={control} />}
         </div>
@@ -287,6 +292,8 @@ export default function DeployForm() {
                       formData.maxSupply != null
                         ? BigInt(Math.round(formData.maxSupply * 10 ** formData.decimals))
                         : null,
+                      formData.authorizationRequired ?? false,
+                      formData.authorizationRevocable ?? false,
                     );
                     setPreflightResult({
                       isLoading: false,
