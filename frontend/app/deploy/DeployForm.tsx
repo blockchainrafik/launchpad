@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { StepMetadata } from "./steps/StepMetadata";
@@ -11,6 +12,7 @@ import { StepSupply } from "./steps/StepSupply";
 import { StepAdmin } from "./steps/StepAdmin";
 import { StepReview } from "./steps/StepReview";
 import { ArrowLeft, ArrowRight, Rocket } from "lucide-react";
+import { useDeployToken, type DeployTokenError } from "../hooks/useDeployToken";
 
 const deploySchema = z.object({
     name: z.string().min(1, "Token name is required").max(32, "Name too long"),
@@ -36,6 +38,8 @@ const STEPS = [
 export default function DeployForm() {
     const [currentStep, setCurrentStep] = useState(1);
     const [isDeploying, setIsDeploying] = useState(false);
+    const router = useRouter();
+    const { deployToken } = useDeployToken();
 
     const {
         register,
@@ -73,11 +77,46 @@ export default function DeployForm() {
 
     const onSubmit = async (data: DeployFormData) => {
         setIsDeploying(true);
-        // Placeholder for actual deployment logic
-        console.log("Deploying with data:", data);
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        setIsDeploying(false);
-        alert("Token deployment simulated! Check console for data.");
+        try {
+            // Deploy the token contract with the form data
+            const result = await deployToken({
+                name: data.name,
+                symbol: data.symbol,
+                decimals: data.decimals,
+                initialSupply: data.initialSupply,
+                maxSupply: data.maxSupply,
+                adminAddress: data.adminAddress,
+            });
+
+            // On success, navigate to the token dashboard
+            alert(
+                `Token deployed successfully!\n\nContract ID: ${result.contractId}\nTransaction Hash: ${result.transactionHash}\n\nRedirecting to dashboard...`
+            );
+            router.push(`/dashboard/${result.contractId}`);
+        } catch (err) {
+            // Handle deployment errors
+            const error = err as DeployTokenError;
+            let errorMessage = "Token deployment failed. Please try again.";
+
+            if (error.type === "validation") {
+                errorMessage = error.message;
+            } else if (error.type === "simulation") {
+                errorMessage = `Simulation error: ${error.message}`;
+            } else if (error.type === "wallet") {
+                errorMessage = error.message;
+            } else if (error.type === "broadcast") {
+                errorMessage = `Broadcast error: ${error.message}`;
+            } else if (error.type === "timeout") {
+                errorMessage = error.message;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
+            alert(errorMessage);
+            console.error("Deployment error:", err);
+        } finally {
+            setIsDeploying(false);
+        }
     };
 
     return (
