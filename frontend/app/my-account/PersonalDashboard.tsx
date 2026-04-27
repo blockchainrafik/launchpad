@@ -32,6 +32,7 @@ import { VestingSection } from "./components/VestingSection";
 import { PersonalTransactionsSection } from "./components/PersonalTransactionsSection";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -412,12 +413,13 @@ export default function PersonalDashboard() {
               </div>
             ))
           ) : (
-            <div className="col-span-full py-12 glass-card flex flex-col items-center justify-center text-center">
-              <Rocket className="w-12 h-12 text-gray-700 mb-4" />
-              <p className="text-gray-400 font-medium">No deployed tokens found yet.</p>
-              <p className="text-xs text-gray-500 mt-1 max-w-xs">
-                Tokens you deploy through the launchpad will appear here automatically.
-              </p>
+            <div className="col-span-full">
+              <EmptyState 
+                title="No deployed tokens found yet"
+                description="Tokens you deploy through the SoroPad launchpad will appear here automatically. Ready to launch your first one?"
+                actionLabel="Deploy Your First Token"
+                actionHref="/deploy"
+              />
             </div>
           )}
         </div>
