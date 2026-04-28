@@ -183,27 +183,22 @@ export default function DeployForm() {
     } catch (err) {
       // Handle deployment errors
       const error = err as DeployTokenError;
-      let errorMessage = "Token deployment failed. Please try again.";
       const errorDetails: string[] = [];
 
       if (error.type === "validation") {
-        errorMessage = error.message;
         errorDetails.push(error.message);
       } else if (error.type === "simulation") {
-        errorMessage = `Simulation error: ${error.message}`;
-        errorDetails.push(error.message);
+        errorDetails.push(`Simulation error: ${error.message}`);
       } else if (error.type === "wallet") {
-        errorMessage = error.message;
         errorDetails.push(error.message);
       } else if (error.type === "broadcast") {
-        errorMessage = `Broadcast error: ${error.message}`;
-        errorDetails.push(error.message);
+        errorDetails.push(`Broadcast error: ${error.message}`);
       } else if (error.type === "timeout") {
-        errorMessage = error.message;
         errorDetails.push(error.message);
       } else if (error.message) {
-        errorMessage = error.message;
         errorDetails.push(error.message);
+      } else {
+        errorDetails.push("Token deployment failed. Please try again.");
       }
 
       setPreflightResult({
