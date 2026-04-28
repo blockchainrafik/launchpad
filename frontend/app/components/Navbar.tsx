@@ -5,6 +5,7 @@ import { useNetwork } from "../providers/NetworkProvider";
 import { WalletButton } from "./WalletButton";
 import { SettingsModal } from "./SettingsModal";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { NotificationCenter } from "./NotificationCenter";
 import { Globe, ChevronDown, Menu, X } from "lucide-react";
 import { useState } from "react";
 
@@ -56,6 +57,9 @@ export function Navbar() {
         <div className="flex items-center gap-3">
           <LanguageSwitcher />
           <NetworkSwitcher />
+
+          {/* Notification Center — transaction history */}
+          <NotificationCenter />
 
           {/* Custom RPC / Horizon settings */}
           <SettingsModal />
