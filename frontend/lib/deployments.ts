@@ -1,4 +1,4 @@
-import { type TokenInfo } from "./stellar";
+
 
 export interface TrackedDeployment {
   contractId: string;

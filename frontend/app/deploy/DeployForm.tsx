@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import type { Resolver } from "react-hook-form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -18,16 +19,32 @@ import { trackDeployment } from "@/lib/deployments";
 import { ArrowLeft, ArrowRight, Rocket } from "lucide-react";
 import { useNetwork } from "@/app/providers/NetworkProvider";
 
+const optionalNumber = (schema: z.ZodNumber) =>
+  z.preprocess((value) => {
+    if (value === "" || value === null || value === undefined) return undefined;
+    if (typeof value === "number" && Number.isNaN(value)) return undefined;
+    return Number(value);
+  }, schema.optional());
+
 const deploySchema = z
   .object({
     name: z.string().min(1, "Token name is required").max(32, "Name too long"),
     symbol: z.string().min(1, "Symbol is required").max(12, "Symbol too long"),
     decimals: z.number().min(0).max(14),
     initialSupply: z.number().min(1, "Initial supply must be at least 1"),
-    maxSupply: z.number().min(1, "Max supply must be at least 1").optional(),
+    maxSupply: optionalNumber(z.number().min(1, "Max supply must be at least 1")),
     adminAddress: z
       .string()
-      .regex(/^G[A-Z2-7]{55}$/, "Invalid Stellar public key"),
+      .regex(/^[GC][A-Z2-7]{55}$/, "Invalid Stellar address or contract ID"),
+    adminMode: z.enum(["wallet", "custom"]),
+    complianceNodeAddress: z
+      .string()
+      .regex(/^C[A-Z2-7]{55}$/, "Invalid compliance node contract ID")
+      .optional()
+      .or(z.literal("")),
+    // Authorization flags
+    authorizationRequired: z.boolean(),
+    authorizationRevocable: z.boolean(),
     // Optional metadata fields
     description: z.string().optional(),
     logoUrl: z.string().optional(),
@@ -68,14 +85,18 @@ export default function DeployForm() {
     formState: { errors, isValid },
     watch,
   } = useForm<DeployFormData>({
-    resolver: zodResolver(deploySchema),
+    resolver: zodResolver(deploySchema) as unknown as Resolver<DeployFormData>,
     mode: "onChange",
     defaultValues: {
       decimals: 7,
       initialSupply: 0,
       name: "",
       symbol: "",
-      adminAddress: "",
+      adminAddress: publicKey ?? "",
+      adminMode: publicKey ? "wallet" : "custom",
+      complianceNodeAddress: "",
+      authorizationRequired: false,
+      authorizationRevocable: false,
       description: "",
       logoUrl: "",
       website: "",
@@ -88,7 +109,7 @@ export default function DeployForm() {
     let fieldsToValidate: (keyof DeployFormData)[] = [];
     if (currentStep === 1) fieldsToValidate = ["name", "symbol", "decimals"];
     if (currentStep === 2) fieldsToValidate = ["initialSupply", "maxSupply"];
-    if (currentStep === 3) fieldsToValidate = ["adminAddress"];
+    if (currentStep === 3) fieldsToValidate = ["adminMode", "adminAddress", "complianceNodeAddress"];
 
     const isStepValid = await trigger(fieldsToValidate);
     if (isStepValid) {
@@ -211,10 +232,14 @@ export default function DeployForm() {
             <StepMetadata register={register} errors={errors} />
           )}
           {currentStep === 2 && (
-            <StepSupply register={register} errors={errors} />
-          )}
+  <StepSupply control={control} errors={errors} />
+)}
           {currentStep === 3 && (
-            <StepAdmin register={register} errors={errors} />
+            <StepAdmin
+              register={register}
+              errors={errors}
+              control={control}
+            />
           )}
           {currentStep === 4 && <StepReview control={control} />}
         </div>
@@ -280,6 +305,10 @@ export default function DeployForm() {
                       formData.maxSupply != null
                         ? BigInt(Math.round(formData.maxSupply * 10 ** formData.decimals))
                         : null,
+                      formData.authorizationRequired ?? false,
+                      formData.authorizationRevocable ?? false,
+                      formData.complianceNodeAddress || null,
+                      publicKey ?? undefined,
                     );
                     setPreflightResult({
                       isLoading: false,

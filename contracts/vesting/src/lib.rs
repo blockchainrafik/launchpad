@@ -10,7 +10,9 @@ use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, E
 #[contracttype]
 pub enum DataKey {
     Admin,
+    PendingAdmin,
     TokenContract,
+    IsPaused,
     Schedule(Address),
 }
 
@@ -34,6 +36,7 @@ pub struct VestingSchedule {
 /// Contributor issues layered on top:
 /// - #3  revoke() — admin reclaims unvested tokens
 /// - #5  structured events audit
+/// - #149 pause/unpause circuit breaker
 #[contract]
 pub struct VestingContract;
 
@@ -57,13 +60,38 @@ impl VestingContract {
 
     // ── Admin actions ───────────────────────────────────────────────────
 
+    /// Propose a new admin. Must be called by the current admin.
+    /// The new admin must call `accept_admin` to finalize the transfer.
+    pub fn propose_admin(env: Env, new_admin: Address) {
+        Self::_require_admin(&env);
+        env.storage()
+            .instance()
+            .set(&DataKey::PendingAdmin, &new_admin);
+        env.events()
+            .publish((symbol_short!("prop_adm"),), new_admin);
+    }
+
+    /// Accept the admin role. Must be called by the pending admin.
+    pub fn accept_admin(env: Env) {
+        let pending: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::PendingAdmin)
+            .expect("no pending admin");
+        pending.require_auth();
+        env.storage().instance().set(&DataKey::Admin, &pending);
+        env.storage().instance().remove(&DataKey::PendingAdmin);
+        env.events().publish((symbol_short!("acc_adm"),), pending);
+    }
+
     /// Create a cliff + linear vesting schedule for `recipient`.
     ///
     /// `cliff_ledger` — ledger number when tokens start unlocking.
     /// `end_ledger`   — ledger number when 100 % is vested.
     ///
-    /// The caller (admin) must have already transferred `total_amount` tokens
-    /// to this contract's address before calling this function.
+    /// This function atomically transfers `total_amount` tokens from the admin
+    /// to this contract's address using transfer, ensuring the contract
+    /// is properly funded in the same transaction.
     pub fn create_schedule(
         env: Env,
         recipient: Address,
@@ -71,7 +99,14 @@ impl VestingContract {
         cliff_ledger: u32,
         end_ledger: u32,
     ) {
-        Self::_require_admin(&env);
+        Self::_check_paused(&env);
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .expect("not initialized");
+        admin.require_auth();
+
         assert!(total_amount > 0, "total_amount must be positive");
         assert!(
             end_ledger > cliff_ledger,
@@ -82,6 +117,17 @@ impl VestingContract {
         if env.storage().persistent().has(&key) {
             panic!("schedule already exists for this recipient");
         }
+
+        // Get the token contract address
+        let token_addr: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::TokenContract)
+            .expect("not initialized");
+
+        // Atomically transfer tokens from admin to this contract
+        let token_client = soroban_sdk::token::Client::new(&env, &token_addr);
+        token_client.transfer(&admin, &env.current_contract_address(), &total_amount);
 
         let schedule = VestingSchedule {
             recipient: recipient.clone(),
@@ -94,6 +140,18 @@ impl VestingContract {
 
         env.storage().persistent().set(&key, &schedule);
 
+        // Extend TTL for the schedule to prevent archiving during vesting period
+        let current_ledger = env.ledger().sequence();
+        let ttl_ledgers = if end_ledger > current_ledger {
+            end_ledger - current_ledger
+        } else {
+            // Default TTL if end_ledger is in the past
+            52 * 7 * 24 * 60 / 5
+        };
+        env.storage()
+            .persistent()
+            .extend_ttl(&key, ttl_ledgers, ttl_ledgers);
+
         env.events()
             .publish((symbol_short!("create"), recipient), total_amount);
     }
@@ -101,6 +159,7 @@ impl VestingContract {
     /// Release all currently vested (but unreleased) tokens to the recipient.
     /// Can be called by anyone.
     pub fn release(env: Env, recipient: Address) {
+        Self::_check_paused(&env);
         let key = DataKey::Schedule(recipient.clone());
         let mut schedule: VestingSchedule = env
             .storage()
@@ -116,6 +175,14 @@ impl VestingContract {
 
         schedule.released += releasable;
         env.storage().persistent().set(&key, &schedule);
+
+        // Extend TTL for the schedule to prevent archiving
+        let ttl_ledgers = schedule.end_ledger - env.ledger().sequence();
+        if ttl_ledgers > 0 {
+            env.storage()
+                .persistent()
+                .extend_ttl(&key, ttl_ledgers as u32, ttl_ledgers as u32);
+        }
 
         // Transfer tokens from the vesting contract to the recipient via
         // the token contract's transfer function.
@@ -134,9 +201,8 @@ impl VestingContract {
 
     /// Admin-only: revoke a schedule, send vested portion to recipient,
     /// return unvested remainder to admin.
-    ///
-    /// TODO (issue #3): implement revoke logic
     pub fn revoke(env: Env, recipient: Address) {
+        Self::_check_paused(&env);
         Self::_require_admin(&env);
 
         let key = DataKey::Schedule(recipient.clone());
@@ -208,6 +274,28 @@ impl VestingContract {
         schedule.released
     }
 
+    /// Returns `true` if the contract is currently paused.
+    pub fn is_paused(env: Env) -> bool {
+        env.storage()
+            .instance()
+            .get(&DataKey::IsPaused)
+            .unwrap_or(false)
+    }
+
+    /// Pause the vesting contract. Admin only.
+    pub fn pause(env: Env) {
+        Self::_require_admin(&env);
+        env.storage().instance().set(&DataKey::IsPaused, &true);
+        env.events().publish((symbol_short!("pause"),), true);
+    }
+
+    /// Unpause the vesting contract. Admin only.
+    pub fn unpause(env: Env) {
+        Self::_require_admin(&env);
+        env.storage().instance().remove(&DataKey::IsPaused);
+        env.events().publish((symbol_short!("pause"),), false);
+    }
+
     /// Return the full schedule struct for a recipient.
     pub fn get_schedule(env: Env, recipient: Address) -> VestingSchedule {
         let key = DataKey::Schedule(recipient);
@@ -226,6 +314,17 @@ impl VestingContract {
             .get(&DataKey::Admin)
             .expect("not initialized");
         admin.require_auth();
+    }
+
+    fn _check_paused(env: &Env) {
+        if env
+            .storage()
+            .instance()
+            .get::<DataKey, bool>(&DataKey::IsPaused)
+            .unwrap_or(false)
+        {
+            panic!("vesting contract is paused");
+        }
     }
 
     /// Cliff + linear vesting formula.
@@ -267,12 +366,13 @@ mod test {
         let token = env.register_stellar_asset_contract(admin.clone());
         let token_client = soroban_sdk::token::StellarAssetClient::new(env, &token);
 
-        // Mint tokens to the vesting contract
-        token_client.mint(&client.address, &1_000_000i128);
+        // Mint tokens to the admin
+        token_client.mint(&admin, &1_000_000i128);
 
         client.initialize(&admin, &token);
 
         // cliff at ledger 100, fully vested at ledger 200
+        // The admin will transfer tokens directly in create_schedule
         client.create_schedule(&recipient, &1_000i128, &100u32, &200u32);
 
         (admin, recipient)
@@ -401,7 +501,8 @@ mod test {
         let asset_client = soroban_sdk::token::StellarAssetClient::new(&env, &token_addr);
 
         client.initialize(&admin, &token_addr);
-        asset_client.mint(&client.address, &1000);
+        asset_client.mint(&admin, &1000);
+
         client.create_schedule(&recipient, &1000, &100, &200);
 
         env.ledger().set_sequence_number(150);
@@ -426,7 +527,8 @@ mod test {
         let asset_client = soroban_sdk::token::StellarAssetClient::new(&env, &token_addr);
 
         client.initialize(&admin, &token_addr);
-        asset_client.mint(&client.address, &1000);
+        asset_client.mint(&admin, &1000);
+
         client.create_schedule(&recipient, &1000, &100, &200);
 
         env.ledger().set_sequence_number(125);
