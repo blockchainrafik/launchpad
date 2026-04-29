@@ -599,4 +599,52 @@ mod test {
         client.initialize(&admin, &Address::generate(&env));
         client.create_schedule(&recipient, &0, &100, &200);
     }
+
+    #[test]
+    fn test_propose_and_accept_admin() {
+        let env = Env::default();
+        env.mock_all_auths();
+
+        let contract_id = env.register_contract(None, VestingContract);
+        let client = VestingContractClient::new(&env, &contract_id);
+        let (_, _) = setup_schedule(&env, &client);
+
+        let new_admin = Address::generate(&env);
+        client.propose_admin(&new_admin);
+        client.accept_admin();
+    }
+
+    #[test]
+    #[should_panic(expected = "no pending admin")]
+    fn test_accept_admin_without_proposal() {
+        let env = Env::default();
+        env.mock_all_auths();
+
+        let contract_id = env.register_contract(None, VestingContract);
+        let client = VestingContractClient::new(&env, &contract_id);
+        let admin = Address::generate(&env);
+        let token = Address::generate(&env);
+        client.initialize(&admin, &token);
+
+        client.accept_admin();
+    }
+
+    #[test]
+    fn test_propose_admin_overwrites_previous() {
+        let env = Env::default();
+        env.mock_all_auths();
+
+        let contract_id = env.register_contract(None, VestingContract);
+        let client = VestingContractClient::new(&env, &contract_id);
+        let admin = Address::generate(&env);
+        let token = Address::generate(&env);
+        client.initialize(&admin, &token);
+
+        let first_new_admin = Address::generate(&env);
+        let second_new_admin = Address::generate(&env);
+
+        client.propose_admin(&first_new_admin);
+        client.propose_admin(&second_new_admin);
+        client.accept_admin();
+    }
 }
