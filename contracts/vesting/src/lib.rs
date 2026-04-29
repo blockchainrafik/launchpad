@@ -12,6 +12,7 @@ pub enum DataKey {
     Admin,
     PendingAdmin,
     TokenContract,
+    IsPaused,
     Schedule(Address),
 }
 
@@ -35,6 +36,7 @@ pub struct VestingSchedule {
 /// Contributor issues layered on top:
 /// - #3  revoke() — admin reclaims unvested tokens
 /// - #5  structured events audit
+/// - #149 pause/unpause circuit breaker
 #[contract]
 pub struct VestingContract;
 
@@ -97,6 +99,7 @@ impl VestingContract {
         cliff_ledger: u32,
         end_ledger: u32,
     ) {
+        Self::_check_paused(&env);
         let admin: Address = env
             .storage()
             .instance()
@@ -156,6 +159,7 @@ impl VestingContract {
     /// Release all currently vested (but unreleased) tokens to the recipient.
     /// Can be called by anyone.
     pub fn release(env: Env, recipient: Address) {
+        Self::_check_paused(&env);
         let key = DataKey::Schedule(recipient.clone());
         let mut schedule: VestingSchedule = env
             .storage()
@@ -198,6 +202,7 @@ impl VestingContract {
     /// Admin-only: revoke a schedule, send vested portion to recipient,
     /// return unvested remainder to admin.
     pub fn revoke(env: Env, recipient: Address) {
+        Self::_check_paused(&env);
         Self::_require_admin(&env);
 
         let key = DataKey::Schedule(recipient.clone());
@@ -245,6 +250,45 @@ impl VestingContract {
             .publish((symbol_short!("revoke"), recipient), (releasable, unvested));
     }
 
+    /// Admin-only: extend the cliff ledger of an existing (non-revoked) schedule.
+    ///
+    /// Rules enforced:
+    /// - `new_cliff` must be strictly greater than the current `cliff_ledger`
+    ///   (extension only — reduction is never allowed).
+    /// - The current ledger must still be before the cliff (once the cliff has
+    ///   already passed there is nothing left to delay).
+    /// - `new_cliff` must remain strictly less than `end_ledger`.
+    pub fn extend_cliff(env: Env, recipient: Address, new_cliff: u32) {
+        Self::_require_admin(&env);
+
+        let key = DataKey::Schedule(recipient.clone());
+        let mut schedule: VestingSchedule = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .expect("no schedule found");
+
+        assert!(!schedule.revoked, "schedule has been revoked");
+        assert!(
+            env.ledger().sequence() < schedule.cliff_ledger,
+            "cliff has already passed"
+        );
+        assert!(
+            new_cliff > schedule.cliff_ledger,
+            "new_cliff must be later than current cliff"
+        );
+        assert!(
+            new_cliff < schedule.end_ledger,
+            "new_cliff must be before end_ledger"
+        );
+
+        schedule.cliff_ledger = new_cliff;
+        env.storage().persistent().set(&key, &schedule);
+
+        env.events()
+            .publish((symbol_short!("clf_ext"), recipient), new_cliff);
+    }
+
     // ── Read-only queries ───────────────────────────────────────────────
 
     /// Total amount vested so far (may or may not have been released).
@@ -269,6 +313,28 @@ impl VestingContract {
         schedule.released
     }
 
+    /// Returns `true` if the contract is currently paused.
+    pub fn is_paused(env: Env) -> bool {
+        env.storage()
+            .instance()
+            .get(&DataKey::IsPaused)
+            .unwrap_or(false)
+    }
+
+    /// Pause the vesting contract. Admin only.
+    pub fn pause(env: Env) {
+        Self::_require_admin(&env);
+        env.storage().instance().set(&DataKey::IsPaused, &true);
+        env.events().publish((symbol_short!("pause"),), true);
+    }
+
+    /// Unpause the vesting contract. Admin only.
+    pub fn unpause(env: Env) {
+        Self::_require_admin(&env);
+        env.storage().instance().remove(&DataKey::IsPaused);
+        env.events().publish((symbol_short!("pause"),), false);
+    }
+
     /// Return the full schedule struct for a recipient.
     pub fn get_schedule(env: Env, recipient: Address) -> VestingSchedule {
         let key = DataKey::Schedule(recipient);
@@ -287,6 +353,17 @@ impl VestingContract {
             .get(&DataKey::Admin)
             .expect("not initialized");
         admin.require_auth();
+    }
+
+    fn _check_paused(env: &Env) {
+        if env
+            .storage()
+            .instance()
+            .get::<DataKey, bool>(&DataKey::IsPaused)
+            .unwrap_or(false)
+        {
+            panic!("vesting contract is paused");
+        }
     }
 
     /// Cliff + linear vesting formula.
@@ -546,6 +623,77 @@ mod test {
         let token = Address::generate(&env);
         client.initialize(&admin, &token);
         client.revoke(&recipient);
+    }
+
+    // ── extend_cliff tests ─────────────────────────────────────────────
+
+    #[test]
+    fn test_extend_cliff_success() {
+        let env = Env::default();
+        env.mock_all_auths();
+
+        let contract_id = env.register_contract(None, VestingContract);
+        let client = VestingContractClient::new(&env, &contract_id);
+        let (_, recipient) = setup_schedule(&env, &client);
+
+        // Cliff is at 100; extend it to 150 while current ledger is still 0
+        client.extend_cliff(&recipient, &150u32);
+
+        let schedule = client.get_schedule(&recipient);
+        assert_eq!(schedule.cliff_ledger, 150);
+        assert_eq!(schedule.end_ledger, 200); // unchanged
+    }
+
+    #[test]
+    #[should_panic(expected = "new_cliff must be later than current cliff")]
+    fn test_extend_cliff_cannot_reduce() {
+        let env = Env::default();
+        env.mock_all_auths();
+
+        let contract_id = env.register_contract(None, VestingContract);
+        let client = VestingContractClient::new(&env, &contract_id);
+        let (_, recipient) = setup_schedule(&env, &client);
+
+        // cliff is 100; trying to set it to 50 must panic
+        client.extend_cliff(&recipient, &50u32);
+    }
+
+    #[test]
+    #[should_panic(expected = "cliff has already passed")]
+    fn test_extend_cliff_after_cliff_passed() {
+        let env = Env::default();
+        env.mock_all_auths();
+
+        let contract_id = env.register_contract(None, VestingContract);
+        let client = VestingContractClient::new(&env, &contract_id);
+        let (_, recipient) = setup_schedule(&env, &client);
+
+        // Jump past the cliff
+        env.ledger().set_sequence_number(120);
+        client.extend_cliff(&recipient, &150u32);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_extend_cliff_non_admin_panics() {
+        let env = Env::default();
+        // Do NOT mock all auths — only mock nothing so admin auth fails
+        let contract_id = env.register_contract(None, VestingContract);
+        let client = VestingContractClient::new(&env, &contract_id);
+        let admin = Address::generate(&env);
+        let token = env.register_stellar_asset_contract(admin.clone());
+        let asset_client = soroban_sdk::token::StellarAssetClient::new(&env, &token);
+
+        // Use mock_all_auths only for setup
+        env.mock_all_auths();
+        client.initialize(&admin, &token);
+        asset_client.mint(&admin, &1_000_000i128);
+        let recipient = Address::generate(&env);
+        client.create_schedule(&recipient, &1_000i128, &100u32, &200u32);
+
+        // Clear auths so the next call fails
+        env.set_auths(&[]);
+        client.extend_cliff(&recipient, &150u32);
     }
 
     #[test]

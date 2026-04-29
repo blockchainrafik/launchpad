@@ -5,6 +5,7 @@ import { useNetwork } from "../providers/NetworkProvider";
 import { WalletButton } from "./WalletButton";
 import { SettingsModal } from "./SettingsModal";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { NotificationCenter } from "./NotificationCenter";
 import { Globe, ChevronDown, Menu, X } from "lucide-react";
 import { useState } from "react";
 
