@@ -57,18 +57,33 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
     async function reconnect() {
       try {
+        const storedAddress = localStorage.getItem("soropad:wallet:address");
+        const storedTimestamp = localStorage.getItem("soropad:wallet:timestamp");
+        
         const { isConnected: installed } = await freighterIsConnected();
         if (!installed) return;
 
         const { isAllowed: allowed } = await freighterIsAllowed();
-        if (!allowed) return;
+        if (!allowed) {
+          if (storedAddress) {
+            localStorage.removeItem("soropad:wallet:address");
+            localStorage.removeItem("soropad:wallet:timestamp");
+          }
+          return;
+        }
 
         const { address } = await freighterGetAddress();
         if (!cancelled && address) {
           setPublicKey(address);
+          
+          if (storedAddress !== address || !storedTimestamp) {
+            localStorage.setItem("soropad:wallet:address", address);
+            localStorage.setItem("soropad:wallet:timestamp", Date.now().toString());
+          }
         }
       } catch {
-        // Freighter not available — silently ignore
+        localStorage.removeItem("soropad:wallet:address");
+        localStorage.removeItem("soropad:wallet:timestamp");
       }
     }
 
@@ -88,7 +103,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Ask the user to allow this site
       await freighterSetAllowed();
 
       const { address, error } = await freighterGetAddress();
@@ -99,6 +113,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
       if (address) {
         setPublicKey(address);
+        localStorage.setItem("soropad:wallet:address", address);
+        localStorage.setItem("soropad:wallet:timestamp", Date.now().toString());
       }
     } catch (err) {
       console.error("[WalletProvider] connect failed:", err);
@@ -110,6 +126,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   /* ── disconnect() ─────────────────────────────────────────────── */
   const disconnect = useCallback(() => {
     setPublicKey(null);
+    localStorage.removeItem("soropad:wallet:address");
+    localStorage.removeItem("soropad:wallet:timestamp");
   }, []);
 
   /* ── signTransaction() ────────────────────────────────────────── */

@@ -13,6 +13,7 @@ import { StepMetadata } from "./steps/StepMetadata";
 import { StepSupply } from "./steps/StepSupply";
 import { StepAdmin } from "./steps/StepAdmin";
 import { StepReview } from "./steps/StepReview";
+import { FeeEstimation } from "./components/FeeEstimation";
 import { useTransactionSimulator } from "@/hooks/useTransactionSimulator";
 import { useWallet } from "@/app/hooks/useWallet";
 import { savePendingMetadata } from "./utils/metadata";
@@ -66,6 +67,9 @@ const STEPS = ["Metadata", "Supply", "Admin", "Review"];
 export default function DeployForm() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isDeploying, setIsDeploying] = useState(false);
+  const [estimatedFee, setEstimatedFee] = useState<string | null>(null);
+  const [feeEstimationLoading, setFeeEstimationLoading] = useState(false);
+  const [feeEstimationError, setFeeEstimationError] = useState<string | null>(null);
   const [preflightResult, setPreflightResult] = useState<{
     isLoading: boolean;
     success: boolean;
@@ -117,7 +121,50 @@ export default function DeployForm() {
 
     const isStepValid = await trigger(fieldsToValidate);
     if (isStepValid) {
-      setCurrentStep((prev) => Math.min(prev + 1, STEPS.length));
+      const nextStepNum = Math.min(currentStep + 1, STEPS.length);
+      setCurrentStep(nextStepNum);
+      
+      if (nextStepNum === 4) {
+        estimateFee();
+      }
+    }
+  };
+
+  const estimateFee = async () => {
+    const formData = watch();
+    if (!formData.adminAddress || !formData.name || !formData.symbol) return;
+
+    setFeeEstimationLoading(true);
+    setFeeEstimationError(null);
+    setEstimatedFee(null);
+
+    try {
+      const result = await simulator.checkTokenDeployment(
+        formData.adminAddress,
+        formData.name,
+        formData.symbol,
+        formData.decimals,
+        BigInt(Math.round((formData.initialSupply ?? 0) * 10 ** formData.decimals)),
+        formData.maxSupply != null
+          ? BigInt(Math.round(formData.maxSupply * 10 ** formData.decimals))
+          : null,
+        formData.authorizationRequired ?? false,
+        formData.authorizationRevocable ?? false,
+      );
+
+      if (result.estimatedFee) {
+        setEstimatedFee(result.estimatedFee);
+      }
+
+      if (!result.success) {
+        setFeeEstimationError(result.errors[0] || "Fee estimation failed");
+      }
+    } catch (error) {
+      setFeeEstimationError(
+        error instanceof Error ? error.message : "Failed to estimate fee"
+      );
+    } finally {
+      setFeeEstimationLoading(false);
     }
   };
 
@@ -274,6 +321,17 @@ export default function DeployForm() {
           )}
           {currentStep === 4 && <StepReview control={control} />}
         </div>
+
+        {/* Fee Estimation (shown on review step) */}
+        {currentStep === 4 && (
+          <div className="mt-6">
+            <FeeEstimation
+              estimatedFee={estimatedFee}
+              isLoading={feeEstimationLoading}
+              error={feeEstimationError}
+            />
+          </div>
+        )}
 
         {/* Pre-flight check results (shown on review step) */}
         {currentStep === 4 && preflightResult && (
