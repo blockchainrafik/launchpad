@@ -5,6 +5,7 @@ import type { Resolver } from "react-hook-form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { PreflightCheckDisplay } from "@/components/ui/PreflightCheck";
@@ -18,6 +19,7 @@ import { savePendingMetadata } from "./utils/metadata";
 import { trackDeployment } from "@/lib/deployments";
 import { ArrowLeft, ArrowRight, Rocket } from "lucide-react";
 import { useNetwork } from "@/app/providers/NetworkProvider";
+import { useDeployToken, type DeployTokenError } from "../hooks/useDeployToken";
 
 const optionalNumber = (schema: z.ZodNumber) =>
   z.preprocess((value) => {
@@ -71,7 +73,9 @@ export default function DeployForm() {
     warnings: string[];
   } | null>(null);
 
+  const router = useRouter();
   const { publicKey } = useWallet();
+  const { deployToken } = useDeployToken();
   const COOLDOWN_MS = 60_000;
 
   const simulator = useTransactionSimulator();
@@ -131,15 +135,15 @@ export default function DeployForm() {
     });
 
     try {
-      // Placeholder for actual deployment logic
-      // In a real implementation, this would:
-      // 1. Build the token contract deployment transaction
-      // 2. Simulate it via Soroban RPC
-      // 3. Show results to user
-      // 4. Prompt for Freighter signature if all checks pass
-
-      console.log("Deploying with data:", data);
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Deploy the token contract with the form data
+      const result = await deployToken({
+        name: data.name,
+        symbol: data.symbol,
+        decimals: data.decimals,
+        initialSupply: data.initialSupply,
+        maxSupply: data.maxSupply,
+        adminAddress: data.adminAddress,
+      });
 
       setPreflightResult({
         isLoading: false,
@@ -148,8 +152,7 @@ export default function DeployForm() {
         warnings: [],
       });
 
-      // Save metadata client-side for now. If a real contractId is returned
-      // by the deployment flow, the metadata should be re-keyed by that ID.
+      // Save metadata client-side
       try {
         savePendingMetadata(data.symbol, {
           description: data.description,
@@ -158,7 +161,9 @@ export default function DeployForm() {
           twitter: data.twitter,
           discord: data.discord,
         });
-      } catch {}
+      } catch {
+        // Ignore metadata save errors
+      }
 
       // Set client-side deploy cooldown (per-wallet)
       try {
@@ -168,24 +173,50 @@ export default function DeployForm() {
         // Track deployment for user dashboard
         if (publicKey) {
           trackDeployment(publicKey, {
-            contractId: `C${Math.random().toString(36).substring(2).toUpperCase()}`, // Mocked contract ID for now
+            contractId: result.contractId,
             name: data.name,
             symbol: data.symbol,
             network: networkConfig.network,
           });
         }
-      } catch {}
+      } catch {
+        // Ignore tracking errors
+      }
 
-      alert("Token deployment simulated! Check console for data.");
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+      // On success, navigate to the token dashboard
+      alert(
+        `Token deployed successfully!\n\nContract ID: ${result.contractId}\nTransaction Hash: ${result.transactionHash}\n\nRedirecting to dashboard...`
+      );
+      router.push(`/dashboard/${result.contractId}`);
+    } catch (err) {
+      // Handle deployment errors
+      const error = err as DeployTokenError;
+      const errorDetails: string[] = [];
+
+      if (error.type === "validation") {
+        errorDetails.push(error.message);
+      } else if (error.type === "simulation") {
+        errorDetails.push(`Simulation error: ${error.message}`);
+      } else if (error.type === "wallet") {
+        errorDetails.push(error.message);
+      } else if (error.type === "broadcast") {
+        errorDetails.push(`Broadcast error: ${error.message}`);
+      } else if (error.type === "timeout") {
+        errorDetails.push(error.message);
+      } else if (error.message) {
+        errorDetails.push(error.message);
+      } else {
+        errorDetails.push("Token deployment failed. Please try again.");
+      }
+
       setPreflightResult({
         isLoading: false,
         success: false,
-        errors: [errorMessage],
+        errors: errorDetails,
         warnings: [],
       });
+
+      console.error("Deployment error:", err);
     } finally {
       setIsDeploying(false);
     }
@@ -232,8 +263,8 @@ export default function DeployForm() {
             <StepMetadata register={register} errors={errors} />
           )}
           {currentStep === 2 && (
-  <StepSupply control={control} errors={errors} />
-)}
+            <StepSupply control={control} errors={errors} />
+          )}
           {currentStep === 3 && (
             <StepAdmin
               register={register}
