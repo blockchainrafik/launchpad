@@ -68,24 +68,33 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       if (typeof window === "undefined") return;
 
       try {
-        const savedWalletId = localStorage.getItem(STORAGE_KEY_WALLET_ID);
-        const savedPublicKey = localStorage.getItem(STORAGE_KEY_PUBLIC_KEY);
+        const storedAddress = localStorage.getItem("soropad:wallet:address");
+        const storedTimestamp = localStorage.getItem("soropad:wallet:timestamp");
+        
+        const { isConnected: installed } = await freighterIsConnected();
+        if (!installed) return;
 
-        if (!savedWalletId || !savedPublicKey) return;
+        const { isAllowed: allowed } = await freighterIsAllowed();
+        if (!allowed) {
+          if (storedAddress) {
+            localStorage.removeItem("soropad:wallet:address");
+            localStorage.removeItem("soropad:wallet:timestamp");
+          }
+          return;
+        }
 
-        const adapter = getWalletAdapter(savedWalletId);
-        if (!adapter) return;
-
-        const isAvailable = await adapter.isAvailable();
-        if (!isAvailable) return;
-
-        const currentKey = await adapter.getPublicKey();
-        if (!cancelled && currentKey === savedPublicKey) {
-          setWalletId(savedWalletId);
-          setPublicKey(savedPublicKey);
+        const { address } = await freighterGetAddress();
+        if (!cancelled && address) {
+          setPublicKey(address);
+          
+          if (storedAddress !== address || !storedTimestamp) {
+            localStorage.setItem("soropad:wallet:address", address);
+            localStorage.setItem("soropad:wallet:timestamp", Date.now().toString());
+          }
         }
       } catch {
-        // Wallet not available — silently ignore
+        localStorage.removeItem("soropad:wallet:address");
+        localStorage.removeItem("soropad:wallet:timestamp");
       }
     }
 
@@ -99,17 +108,24 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const handleWalletSelect = useCallback(async (adapter: WalletAdapter) => {
     setLoading(true);
     try {
-      const address = await adapter.connect();
-      
+      const { isConnected: installed } = await freighterIsConnected();
+      if (!installed) {
+        window.open("https://www.freighter.app/", "_blank");
+        return;
+      }
+
+      await freighterSetAllowed();
+
+      const { address, error } = await freighterGetAddress();
+      if (error) {
+        console.error("[WalletProvider] getAddress error:", error);
+        return;
+      }
+
       if (address) {
         setPublicKey(address);
-        setWalletId(adapter.id);
-        
-        // Persist to localStorage
-        if (typeof window !== "undefined") {
-          localStorage.setItem(STORAGE_KEY_WALLET_ID, adapter.id);
-          localStorage.setItem(STORAGE_KEY_PUBLIC_KEY, address);
-        }
+        localStorage.setItem("soropad:wallet:address", address);
+        localStorage.setItem("soropad:wallet:timestamp", Date.now().toString());
       }
     } catch (err) {
       console.error("[WalletProvider] connect failed:", err);
@@ -127,13 +143,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   /* ── disconnect() ─────────────────────────────────────────────── */
   const disconnect = useCallback(() => {
     setPublicKey(null);
-    setWalletId(null);
-    
-    // Clear localStorage
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(STORAGE_KEY_WALLET_ID);
-      localStorage.removeItem(STORAGE_KEY_PUBLIC_KEY);
-    }
+    localStorage.removeItem("soropad:wallet:address");
+    localStorage.removeItem("soropad:wallet:timestamp");
   }, []);
 
   /* ── signTransaction() ────────────────────────────────────────── */
