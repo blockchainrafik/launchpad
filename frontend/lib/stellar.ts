@@ -316,6 +316,83 @@ export function decodeAddress(val: StellarSdk.xdr.ScVal): string {
 /**
  * Fetch full token metadata from a Soroban SEP-41 token contract.
  */
+/**
+ * Validate if a contract implements the SEP-41 token standard.
+ * This function attempts to call the required SEP-41 methods to verify
+ * that the contract is a valid token contract.
+ */
+export async function validateTokenContract(
+  contractId: string,
+  config: NetworkConfig,
+): Promise<{ isValid: boolean; error?: string }> {
+  try {
+    // Try to call the required SEP-41 methods
+    const [nameResult, symbolResult, decimalsResult] = await Promise.allSettled([
+      simulateCall(contractId, "name", config),
+      simulateCall(contractId, "symbol", config),
+      simulateCall(contractId, "decimals", config),
+    ]);
+
+    // Check if all required methods are available
+    if (nameResult.status === "rejected") {
+      return {
+        isValid: false,
+        error: "Contract does not implement 'name()' method",
+      };
+    }
+
+    if (symbolResult.status === "rejected") {
+      return {
+        isValid: false,
+        error: "Contract does not implement 'symbol()' method",
+      };
+    }
+
+    if (decimalsResult.status === "rejected") {
+      return {
+        isValid: false,
+        error: "Contract does not implement 'decimals()' method",
+      };
+    }
+
+    // Try to decode the values to ensure they return the correct types
+    try {
+      decodeString(nameResult.value);
+      decodeString(symbolResult.value);
+      decodeU32(decimalsResult.value);
+    } catch (decodeError) {
+      return {
+        isValid: false,
+        error: "Contract methods return invalid data types",
+      };
+    }
+
+    // Optionally check for other common SEP-41 methods
+    const [balanceResult, totalSupplyResult] = await Promise.allSettled([
+      simulateCall(contractId, "balance", config, [
+        StellarSdk.Address.fromString(
+          "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+        ).toScVal(),
+      ]),
+      simulateCall(contractId, "total_supply", config),
+    ]);
+
+    if (balanceResult.status === "rejected" && totalSupplyResult.status === "rejected") {
+      return {
+        isValid: false,
+        error: "Contract does not implement required balance or supply methods",
+      };
+    }
+
+    return { isValid: true };
+  } catch (error) {
+    return {
+      isValid: false,
+      error: error instanceof Error ? error.message : "Unknown validation error",
+    };
+  }
+}
+
 export async function fetchTokenInfo(
   contractId: string,
   config: NetworkConfig,
@@ -329,6 +406,12 @@ async function _fetchTokenInfo(
   contractId: string,
   config: NetworkConfig,
 ): Promise<TokenInfo> {
+  // First validate that this is a SEP-41 token contract
+  const validation = await validateTokenContract(contractId, config);
+  if (!validation.isValid) {
+    throw new Error(`Invalid token contract: ${validation.error}`);
+  }
+
   const [nameVal, symbolVal, decimalsVal, adminVal] = await Promise.all([
     simulateCall(contractId, "name", config),
     simulateCall(contractId, "symbol", config),
